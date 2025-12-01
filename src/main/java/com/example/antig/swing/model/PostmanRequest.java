@@ -1,0 +1,50 @@
+package com.example.antig.swing.model;
+
+public class PostmanRequest extends PostmanNode {
+    private String method = "GET";
+    private String url = "";
+    private String body = "";
+    private String params = "";  // Request parameters in properties format
+
+    public PostmanRequest() {
+        super();
+        setAllowsChildren(false);
+    }
+
+    public PostmanRequest(String name) {
+        super(name);
+        setAllowsChildren(false);
+    }
+
+    public String getMethod() {
+        return method;
+    }
+
+    public void setMethod(String method) {
+        this.method = method;
+    }
+
+    public String getUrl() {
+        return url;
+    }
+
+    public void setUrl(String url) {
+        this.url = url;
+    }
+
+    public String getBody() {
+        return body;
+    }
+
+    public void setBody(String body) {
+        this.body = body;
+    }
+
+    public String getParams() {
+        return params;
+    }
+
+    public void setParams(String params) {
+        this.params = params;
+    }
+}
