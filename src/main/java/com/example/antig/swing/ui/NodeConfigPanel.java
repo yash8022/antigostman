@@ -12,6 +12,7 @@ import java.util.Map;
  * Tabbed panel for configuring nodes (Collection, Folder, Request).
  * 
  * Common tabs for all nodes:
+ * - Environment: Text area for environment variables in properties format
  * - Headers: Text area for headers in properties format
  * - Prescript: Script to run before request execution
  * - Postscript: Script to run after request execution
@@ -24,6 +25,7 @@ public class NodeConfigPanel extends JPanel {
     private JTabbedPane tabbedPane;
     
     // Common tabs
+    private JTextArea environmentArea;
     private JTextArea headersArea;
     private JTextArea prescriptArea;
     private JTextArea postscriptArea;
@@ -40,19 +42,23 @@ public class NodeConfigPanel extends JPanel {
         
         tabbedPane = new JTabbedPane();
         
-        // Tab 1: Headers
+        // Tab 1: Environment
+        environmentArea = createTextArea();
+        tabbedPane.addTab("Environment", new JScrollPane(environmentArea));
+        
+        // Tab 2: Headers
         headersArea = createTextArea();
         tabbedPane.addTab("Headers", new JScrollPane(headersArea));
         
-        // Tab 2: Prescript
+        // Tab 3: Prescript
         prescriptArea = createTextArea();
         tabbedPane.addTab("Prescript", new JScrollPane(prescriptArea));
         
-        // Tab 3: Postscript
+        // Tab 4: Postscript
         postscriptArea = createTextArea();
         tabbedPane.addTab("Postscript", new JScrollPane(postscriptArea));
         
-        // Tab 4: Execution (for requests only)
+        // Tab 5: Execution (for requests only)
         createExecutionPanel();
         
         add(tabbedPane, BorderLayout.CENTER);
@@ -101,6 +107,9 @@ public class NodeConfigPanel extends JPanel {
             return;
         }
         
+        // Load environment (convert map to properties format)
+        environmentArea.setText(mapToProperties(node.getEnvironment()));
+        
         // Load headers (convert map to properties format)
         headersArea.setText(mapToProperties(node.getHeaders()));
         
@@ -133,6 +142,9 @@ public class NodeConfigPanel extends JPanel {
     public void saveNode() {
         if (currentNode == null) return;
         
+        // Save environment (convert properties format to map)
+        currentNode.setEnvironment(propertiesToMap(environmentArea.getText()));
+        
         // Save headers (convert properties format to map)
         currentNode.setHeaders(propertiesToMap(headersArea.getText()));
         
@@ -158,6 +170,7 @@ public class NodeConfigPanel extends JPanel {
      * Clear all fields.
      */
     private void clearAll() {
+        environmentArea.setText("");
         headersArea.setText("");
         prescriptArea.setText("");
         postscriptArea.setText("");

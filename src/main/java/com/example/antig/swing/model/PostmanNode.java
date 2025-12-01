@@ -20,6 +20,7 @@ import java.util.UUID;
 public abstract class PostmanNode extends DefaultMutableTreeNode {
     private String id;
     private String name;
+    private Map<String, String> environment = new HashMap<>();
     private Map<String, String> headers = new HashMap<>();
     private String prescript = "";
     private String postscript = "";
@@ -49,6 +50,14 @@ public abstract class PostmanNode extends DefaultMutableTreeNode {
     public void setName(String name) {
         this.name = name;
         setUserObject(name);
+    }
+
+    public Map<String, String> getEnvironment() {
+        return environment;
+    }
+
+    public void setEnvironment(Map<String, String> environment) {
+        this.environment = environment;
     }
 
     public Map<String, String> getHeaders() {

@@ -23,6 +23,7 @@ import java.util.Map;
 public abstract class XmlNode {
     private String id;
     private String name;
+    private Map<String, String> environment = new HashMap<>();
     private Map<String, String> headers = new HashMap<>();
     private String prescript = "";
     private String postscript = "";
@@ -49,6 +50,14 @@ public abstract class XmlNode {
 
     public void setName(String name) {
         this.name = name;
+    }
+
+    public Map<String, String> getEnvironment() {
+        return environment;
+    }
+
+    public void setEnvironment(Map<String, String> environment) {
+        this.environment = environment;
     }
 
     public Map<String, String> getHeaders() {

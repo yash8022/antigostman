@@ -47,6 +47,9 @@ public class NodeConverter {
             XmlCollection xmlCollection = new XmlCollection(collection.getId(), collection.getName());
             
             // Defensive null checks
+            if (collection.getEnvironment() != null) {
+                xmlCollection.setEnvironment(new HashMap<>(collection.getEnvironment()));
+            }
             if (collection.getHeaders() != null) {
                 xmlCollection.setHeaders(new HashMap<>(collection.getHeaders()));
             }
@@ -73,6 +76,9 @@ public class NodeConverter {
             XmlFolder xmlFolder = new XmlFolder(folder.getId(), folder.getName());
             
             // Defensive null checks
+            if (folder.getEnvironment() != null) {
+                xmlFolder.setEnvironment(new HashMap<>(folder.getEnvironment()));
+            }
             if (folder.getHeaders() != null) {
                 xmlFolder.setHeaders(new HashMap<>(folder.getHeaders()));
             }
@@ -99,6 +105,9 @@ public class NodeConverter {
             XmlRequest xmlRequest = new XmlRequest(request.getId(), request.getName());
             
             // Defensive null checks
+            if (request.getEnvironment() != null) {
+                xmlRequest.setEnvironment(new HashMap<>(request.getEnvironment()));
+            }
             if (request.getHeaders() != null) {
                 xmlRequest.setHeaders(new HashMap<>(request.getHeaders()));
             }
@@ -150,6 +159,9 @@ public class NodeConverter {
             collection.setId(xmlCollection.getId());
             
             // Defensive null checks
+            if (xmlCollection.getEnvironment() != null) {
+                collection.setEnvironment(new HashMap<>(xmlCollection.getEnvironment()));
+            }
             if (xmlCollection.getHeaders() != null) {
                 collection.setHeaders(new HashMap<>(xmlCollection.getHeaders()));
             }
@@ -173,6 +185,9 @@ public class NodeConverter {
             folder.setId(xmlFolder.getId());
             
             // Defensive null checks
+            if (xmlFolder.getEnvironment() != null) {
+                folder.setEnvironment(new HashMap<>(xmlFolder.getEnvironment()));
+            }
             if (xmlFolder.getHeaders() != null) {
                 folder.setHeaders(new HashMap<>(xmlFolder.getHeaders()));
             }
@@ -196,6 +211,9 @@ public class NodeConverter {
             request.setId(xmlRequest.getId());
             
             // Defensive null checks
+            if (xmlRequest.getEnvironment() != null) {
+                request.setEnvironment(new HashMap<>(xmlRequest.getEnvironment()));
+            }
             if (xmlRequest.getHeaders() != null) {
                 request.setHeaders(new HashMap<>(xmlRequest.getHeaders()));
             }

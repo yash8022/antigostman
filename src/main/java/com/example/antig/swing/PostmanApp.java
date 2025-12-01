@@ -102,6 +102,16 @@ public class PostmanApp extends JFrame {
                 }
             }
         });
+        
+        // Add F2 key listener for renaming nodes
+        projectTree.addKeyListener(new java.awt.event.KeyAdapter() {
+            @Override
+            public void keyPressed(java.awt.event.KeyEvent e) {
+                if (e.getKeyCode() == java.awt.event.KeyEvent.VK_F2) {
+                    renameSelectedNode();
+                }
+            }
+        });
 
         mainSplitPane.setLeftComponent(new JScrollPane(projectTree));
 
@@ -196,6 +206,18 @@ public class PostmanApp extends JFrame {
         }
     }
 
+    private void renameSelectedNode() {
+        PostmanNode node = (PostmanNode) projectTree.getLastSelectedPathComponent();
+        if (node == null) return;
+
+        String newName = JOptionPane.showInputDialog(this, "Enter name:", node.getName());
+        if (newName != null && !newName.trim().isEmpty()) {
+            node.setName(newName);
+            treeModel.nodeChanged(node);
+            if (node == currentNode) onNodeSelected(); // Refresh UI label
+        }
+    }
+
     private void showContextMenu(int x, int y) {
         PostmanNode node = (PostmanNode) projectTree.getLastSelectedPathComponent();
         if (node == null) return;
@@ -213,14 +235,7 @@ public class PostmanApp extends JFrame {
         }
 
         JMenuItem rename = new JMenuItem("Rename");
-        rename.addActionListener(e -> {
-            String newName = JOptionPane.showInputDialog(this, "Enter name:", node.getName());
-            if (newName != null && !newName.trim().isEmpty()) {
-                node.setName(newName);
-                treeModel.nodeChanged(node);
-                if (node == currentNode) onNodeSelected(); // Refresh UI label
-            }
-        });
+        rename.addActionListener(e -> renameSelectedNode());
         menu.add(rename);
 
         JMenuItem delete = new JMenuItem("Delete");
