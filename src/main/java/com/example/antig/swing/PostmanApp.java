@@ -109,6 +109,11 @@ public class PostmanApp extends JFrame {
             public void keyPressed(java.awt.event.KeyEvent e) {
                 if (e.getKeyCode() == java.awt.event.KeyEvent.VK_F2) {
                     renameSelectedNode();
+                } else if (e.getKeyCode() == java.awt.event.KeyEvent.VK_F3) {
+                    PostmanNode node = (PostmanNode) projectTree.getLastSelectedPathComponent();
+                    if (node != null) {
+                        cloneNode(node);
+                    }
                 }
             }
         });
@@ -262,20 +267,36 @@ public class PostmanApp extends JFrame {
     
     private void cloneNode(PostmanNode node) {
         try {
+            String defaultName = node.getName() + "-CLONE";
+            String newName = JOptionPane.showInputDialog(this, "Enter name for clone:", defaultName);
+
+            if (newName == null) return; // User cancelled
+
             // Convert to XML model (no parent references), then back to PostmanNode
             // This avoids cyclic serialization issues
             com.example.antig.swing.model.xml.XmlNode xmlNode = 
                 com.example.antig.swing.service.NodeConverter.toXmlNode(node);
+            
+            if (xmlNode == null) {
+                throw new RuntimeException("Failed to convert node to XML (returned null)");
+            }
+
             PostmanNode clone = 
                 com.example.antig.swing.service.NodeConverter.toPostmanNode(xmlNode);
             
+            if (clone == null) {
+                throw new RuntimeException("Failed to convert XML back to PostmanNode (returned null)");
+            }
+            
             // Rename and assign new IDs recursively
-            clone.setName(clone.getName() + " (Copy)");
+            clone.setName(newName);
             regenerateIds(clone);
             
             PostmanNode parent = (PostmanNode) node.getParent();
             if (parent != null) {
                 addChild(parent, clone);
+            } else {
+                JOptionPane.showMessageDialog(this, "Cannot clone the root node.");
             }
         } catch (Exception e) {
             e.printStackTrace();
