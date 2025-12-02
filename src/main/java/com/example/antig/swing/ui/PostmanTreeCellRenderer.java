@@ -41,6 +41,13 @@ public class PostmanTreeCellRenderer extends DefaultTreeCellRenderer {
             setIcon(requestIcon);
         }
         
+        // Add padding for better spacing
+        setBorder(BorderFactory.createEmptyBorder(4, 4, 4, 4));
+        
+        // Set font size for better readability
+        Font currentFont = getFont();
+        setFont(currentFont.deriveFont(13.0f));
+        
         return this;
     }
     

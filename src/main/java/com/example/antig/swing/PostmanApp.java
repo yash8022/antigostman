@@ -117,6 +117,9 @@ public class PostmanApp extends JFrame {
         // Set custom cell renderer for icons
         projectTree.setCellRenderer(new PostmanTreeCellRenderer());
         
+        // Increase row height for better spacing
+        projectTree.setRowHeight(28);
+        
         projectTree.addTreeSelectionListener(e -> onNodeSelected());
         projectTree.addMouseListener(new MouseAdapter() {
             public void mousePressed(MouseEvent e) {
@@ -660,9 +663,16 @@ public class PostmanApp extends JFrame {
         }
 
         try {
-            UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+            // Use FlatLaf Dark theme for modern look
+            com.formdev.flatlaf.FlatDarkLaf.setup();
         } catch (Exception e) {
             e.printStackTrace();
+            // Fallback to system look and feel
+            try {
+                UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+            } catch (Exception ex) {
+                ex.printStackTrace();
+            }
         }
         SwingUtilities.invokeLater(() -> new PostmanApp().setVisible(true));
     }
