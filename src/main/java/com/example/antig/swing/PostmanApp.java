@@ -580,7 +580,8 @@ public class PostmanApp extends JFrame {
 				collectionFileMap.put(collection, file);
 				recentProjectsManager.addRecentProject(file);
 				updateRecentProjectsMenu((JMenu) getJMenuBar().getMenu(0).getMenuComponent(4));
-				JOptionPane.showMessageDialog(this, "Project saved!");
+				// Update title bar with saved file path
+				setTitle(file.getAbsolutePath());
 			} catch (Exception e) {
 				e.printStackTrace();
 				JOptionPane.showMessageDialog(this, "Error saving: " + e.getMessage());

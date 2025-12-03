@@ -35,13 +35,13 @@ public class NodeConfigPanel extends JPanel {
     private JTabbedPane tabbedPane;
     
     // Common tabs
-    private JTextArea environmentArea;
-    private JTextArea headersArea;
+    private RSyntaxTextArea environmentArea;
+    private RSyntaxTextArea headersArea;
     private RSyntaxTextArea prescriptArea;
     private RSyntaxTextArea postscriptArea;
     
     // Request-only tabs
-    private JTextArea paramsArea;
+    private RSyntaxTextArea paramsArea;
     private JTextArea responseArea;
     private JPanel executionPanel;
     
@@ -53,12 +53,12 @@ public class NodeConfigPanel extends JPanel {
         tabbedPane = new JTabbedPane();
         
         // Tab 1: Environment
-        environmentArea = createTextArea();
-        tabbedPane.addTab("Environment", new JScrollPane(environmentArea));
+        environmentArea = createPropertiesEditor();
+        tabbedPane.addTab("Environment", new RTextScrollPane(environmentArea));
         
         // Tab 2: Headers
-        headersArea = createTextArea();
-        tabbedPane.addTab("Headers", new JScrollPane(headersArea));
+        headersArea = createPropertiesEditor();
+        tabbedPane.addTab("Headers", new RTextScrollPane(headersArea));
         
         // Tab 3: Prescript
         prescriptArea = createCodeEditor();
@@ -74,10 +74,13 @@ public class NodeConfigPanel extends JPanel {
         add(tabbedPane, BorderLayout.CENTER);
     }
     
-    private JTextArea createTextArea() {
-        JTextArea area = new JTextArea();
+    private RSyntaxTextArea createPropertiesEditor() {
+        RSyntaxTextArea area = new RSyntaxTextArea();
+        area.setSyntaxEditingStyle(SyntaxConstants.SYNTAX_STYLE_PROPERTIES_FILE);
         area.setFont(new Font("Monospaced", Font.PLAIN, 12));
         area.setTabSize(2);
+        area.setCodeFoldingEnabled(true);
+        area.setAntiAliasingEnabled(true);
         return area;
     }
 
@@ -172,10 +175,10 @@ public class NodeConfigPanel extends JPanel {
         splitPane.setResizeWeight(0.3); // 30% for params, 70% for response
         
         // Top: Params
-        paramsArea = createTextArea();
+        paramsArea = createPropertiesEditor();
         JPanel paramsPanel = new JPanel(new BorderLayout());
         paramsPanel.add(new JLabel("Request Parameters (key=value format):"), BorderLayout.NORTH);
-        paramsPanel.add(new JScrollPane(paramsArea), BorderLayout.CENTER);
+        paramsPanel.add(new RTextScrollPane(paramsArea), BorderLayout.CENTER);
         splitPane.setTopComponent(paramsPanel);
         
         // Bottom: Response
@@ -187,6 +190,13 @@ public class NodeConfigPanel extends JPanel {
         splitPane.setBottomComponent(responsePanel);
         
         executionPanel.add(splitPane, BorderLayout.CENTER);
+    }
+
+    private JTextArea createTextArea() {
+        JTextArea textArea = new JTextArea();
+        textArea.setFont(new Font("Monospaced", Font.PLAIN, 12));
+        textArea.setTabSize(2);
+        return textArea;
     }
     
     /**
