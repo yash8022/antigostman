@@ -46,7 +46,16 @@ public class NodeConfigPanel extends JPanel {
     private JPanel executionPanel;
     
     private PostmanNode currentNode;
-    
+
+    // Map to store caret positions per node (nodeId -> areaKey -> caretPos)
+    private final Map<String, Map<String, Integer>> nodeCaretMap = new HashMap<>();
+    // Callback invoked when any input loses focus – used to trigger autosave in the main app
+    private Runnable autoSaveCallback;
+
+    public void setAutoSaveCallback(Runnable callback) {
+        this.autoSaveCallback = callback;
+    }
+
     public NodeConfigPanel() {
         setLayout(new BorderLayout());
         
@@ -81,7 +90,55 @@ public class NodeConfigPanel extends JPanel {
         area.setTabSize(2);
         area.setCodeFoldingEnabled(true);
         area.setAntiAliasingEnabled(true);
+        // Focus listener to trigger autosave on loss
+        area.addFocusListener(new java.awt.event.FocusAdapter() {
+            @Override
+            public void focusLost(java.awt.event.FocusEvent e) {
+                // Save current UI data before autosave
+                saveNode();
+                if (autoSaveCallback != null) {
+                    autoSaveCallback.run();
+                }
+            }
+        });
         return area;
+    }
+
+    /**
+     * Save caret positions for the given node ID.
+     */
+    private void saveCaretPositions(String nodeId) {
+        Map<String, Integer> caretMap = new HashMap<>();
+        caretMap.put("env", environmentArea.getCaretPosition());
+        caretMap.put("headers", headersArea.getCaretPosition());
+        caretMap.put("prescript", prescriptArea.getCaretPosition());
+        caretMap.put("postscript", postscriptArea.getCaretPosition());
+        if (paramsArea != null) {
+            caretMap.put("params", paramsArea.getCaretPosition());
+        }
+        nodeCaretMap.put(nodeId, caretMap);
+    }
+
+    /**
+     * Restore caret positions for the given node ID if previously saved.
+     */
+    private void restoreCaretPositions(String nodeId) {
+        Map<String, Integer> caretMap = nodeCaretMap.get(nodeId);
+        if (caretMap == null) return;
+        // Helper to safely set caret within document bounds
+        java.util.function.BiConsumer<RSyntaxTextArea, Integer> safeSet = (area, pos) -> {
+            if (area == null) return;
+            int length = area.getDocument().getLength();
+            int safePos = Math.min(pos, length);
+            area.setCaretPosition(safePos);
+        };
+        safeSet.accept(environmentArea, caretMap.getOrDefault("env", 0));
+        safeSet.accept(headersArea, caretMap.getOrDefault("headers", 0));
+        safeSet.accept(prescriptArea, caretMap.getOrDefault("prescript", 0));
+        safeSet.accept(postscriptArea, caretMap.getOrDefault("postscript", 0));
+        if (paramsArea != null) {
+            safeSet.accept(paramsArea, caretMap.getOrDefault("params", 0));
+        }
     }
 
     private RSyntaxTextArea createCodeEditor() {
@@ -111,6 +168,17 @@ public class NodeConfigPanel extends JPanel {
             @Override
             public void changedUpdate(DocumentEvent e) {
                 updateCompletions(textArea, provider);
+            }
+        });
+        // Focus listener for autosave
+        textArea.addFocusListener(new java.awt.event.FocusAdapter() {
+            @Override
+            public void focusLost(java.awt.event.FocusEvent e) {
+                // Save current UI data before autosave
+                saveNode();
+                if (autoSaveCallback != null) {
+                    autoSaveCallback.run();
+                }
             }
         });
         
@@ -215,6 +283,9 @@ public class NodeConfigPanel extends JPanel {
         
         // Load headers (convert map to properties format)
         headersArea.setText(mapToProperties(node.getHeaders()));
+
+        // Restore caret positions for this node
+        restoreCaretPositions(node.getId());
         
         // Load scripts
         prescriptArea.setText(node.getPrescript() != null ? node.getPrescript() : "");
@@ -250,6 +321,11 @@ public class NodeConfigPanel extends JPanel {
         
         // Save headers (convert properties format to map)
         currentNode.setHeaders(propertiesToMap(headersArea.getText()));
+
+        // Save caret positions for this node
+        if (currentNode != null) {
+            saveCaretPositions(currentNode.getId());
+        }
         
         // Save scripts
         currentNode.setPrescript(prescriptArea.getText());
@@ -291,7 +367,12 @@ public class NodeConfigPanel extends JPanel {
         
         StringBuilder sb = new StringBuilder();
         for (Map.Entry<String, String> entry : map.entrySet()) {
-            sb.append(entry.getKey()).append("=").append(entry.getValue()).append("\n");
+            sb.append(entry.getKey());
+            String value = entry.getValue();
+            if (value != null) {
+                sb.append("=").append(value);
+            }
+            sb.append("\n");
         }
         return sb.toString();
     }
@@ -314,10 +395,13 @@ public class NodeConfigPanel extends JPanel {
             }
             
             int equalsIndex = line.indexOf('=');
-            if (equalsIndex > 0) {
+            if (equalsIndex >= 0) {
                 String key = line.substring(0, equalsIndex).trim();
                 String value = line.substring(equalsIndex + 1).trim();
                 map.put(key, value);
+            } else {
+                // No equals sign, treat as key with null value (to preserve it)
+                map.put(line, null);
             }
         }
         
