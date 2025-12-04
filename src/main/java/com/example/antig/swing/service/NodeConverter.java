@@ -62,6 +62,7 @@ public class NodeConverter {
             }
             xmlCollection.setPrescript(collection.getPrescript() != null ? collection.getPrescript() : "");
             xmlCollection.setPostscript(collection.getPostscript() != null ? collection.getPostscript() : "");
+            xmlCollection.setSelectedTabIndex(collection.getSelectedTabIndex());
             
             // Convert children - use actual tree structure, not the children list
             List<XmlNode> xmlChildren = new ArrayList<>();
@@ -97,6 +98,7 @@ public class NodeConverter {
             }
             xmlFolder.setPrescript(folder.getPrescript() != null ? folder.getPrescript() : "");
             xmlFolder.setPostscript(folder.getPostscript() != null ? folder.getPostscript() : "");
+            xmlFolder.setSelectedTabIndex(folder.getSelectedTabIndex());
             
             // Convert children - use actual tree structure, not the children list
             List<XmlNode> xmlChildren = new ArrayList<>();
@@ -132,10 +134,12 @@ public class NodeConverter {
             }
             xmlRequest.setPrescript(request.getPrescript() != null ? request.getPrescript() : "");
             xmlRequest.setPostscript(request.getPostscript() != null ? request.getPostscript() : "");
+            xmlRequest.setSelectedTabIndex(request.getSelectedTabIndex());
             xmlRequest.setMethod(request.getMethod() != null ? request.getMethod() : "GET");
             xmlRequest.setUrl(request.getUrl() != null ? request.getUrl() : "");
             xmlRequest.setBody(request.getBody() != null ? request.getBody() : "");
             xmlRequest.setParams(request.getParams() != null ? request.getParams() : "");
+            xmlRequest.setBodyType(request.getBodyType() != null ? request.getBodyType() : "TEXT");
             xmlNode = xmlRequest;
             
         } else {
@@ -186,6 +190,7 @@ public class NodeConverter {
             }
             collection.setPrescript(xmlCollection.getPrescript() != null ? xmlCollection.getPrescript() : "");
             collection.setPostscript(xmlCollection.getPostscript() != null ? xmlCollection.getPostscript() : "");
+            collection.setSelectedTabIndex(xmlCollection.getSelectedTabIndex());
             
             // Convert children
             if (xmlCollection.getChildren() != null) {
@@ -212,6 +217,7 @@ public class NodeConverter {
             }
             folder.setPrescript(xmlFolder.getPrescript() != null ? xmlFolder.getPrescript() : "");
             folder.setPostscript(xmlFolder.getPostscript() != null ? xmlFolder.getPostscript() : "");
+            folder.setSelectedTabIndex(xmlFolder.getSelectedTabIndex());
             
             // Convert children
             if (xmlFolder.getChildren() != null) {
@@ -238,10 +244,12 @@ public class NodeConverter {
             }
             request.setPrescript(xmlRequest.getPrescript() != null ? xmlRequest.getPrescript() : "");
             request.setPostscript(xmlRequest.getPostscript() != null ? xmlRequest.getPostscript() : "");
+            request.setSelectedTabIndex(xmlRequest.getSelectedTabIndex());
             request.setMethod(xmlRequest.getMethod() != null ? xmlRequest.getMethod() : "GET");
             request.setUrl(xmlRequest.getUrl() != null ? xmlRequest.getUrl() : "");
             request.setBody(xmlRequest.getBody() != null ? xmlRequest.getBody() : "");
             request.setParams(xmlRequest.getParams() != null ? xmlRequest.getParams() : "");
+            request.setBodyType(xmlRequest.getBodyType() != null ? xmlRequest.getBodyType() : "TEXT");
             postmanNode = request;
             
         } else {

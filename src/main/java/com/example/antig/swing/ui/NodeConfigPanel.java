@@ -83,6 +83,19 @@ public class NodeConfigPanel extends JPanel {
         // Tab 5: Execution (for requests only)
         createExecutionPanel();
         
+        // Add listener to track tab selection changes
+        tabbedPane.addChangeListener(e -> {
+            if (currentNode != null) {
+                currentNode.setSelectedTabIndex(tabbedPane.getSelectedIndex());
+                // Trigger autosave if needed, though usually autosave is on content change
+                // We might want to just update the model in memory and let autosave happen later
+                // or trigger it explicitly. For now, let's just update the model.
+                if (autoSaveCallback != null) {
+                    autoSaveCallback.run();
+                }
+            }
+        });
+        
         add(tabbedPane, BorderLayout.CENTER);
     }
     
@@ -244,6 +257,8 @@ public class NodeConfigPanel extends JPanel {
         textArea.setCodeFoldingEnabled(true);
         textArea.setAntiAliasingEnabled(true);
         textArea.setTabSize(2);
+        textArea.setLineWrap(true);
+        textArea.setWrapStyleWord(true);
         
         // Focus listener for autosave
         textArea.addFocusListener(new java.awt.event.FocusAdapter() {
@@ -268,7 +283,9 @@ public class NodeConfigPanel extends JPanel {
         // Top: Body
         JPanel bodyPanel = new JPanel(new BorderLayout());
         bodyPanel.add(new JLabel("Request Body"), BorderLayout.NORTH);
-        bodyPanel.add(new RTextScrollPane(bodyArea), BorderLayout.CENTER);
+        RTextScrollPane bodyScrollPane = new RTextScrollPane(bodyArea);
+        bodyScrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+        bodyPanel.add(bodyScrollPane, BorderLayout.CENTER);
         splitPane.setTopComponent(bodyPanel);
         
         // Bottom: Response
@@ -276,7 +293,9 @@ public class NodeConfigPanel extends JPanel {
         responseArea.setEditable(false);
         JPanel responsePanel = new JPanel(new BorderLayout());
         responsePanel.add(new JLabel("Response:"), BorderLayout.NORTH);
-        responsePanel.add(new JScrollPane(responseArea), BorderLayout.CENTER);
+        JScrollPane responseScrollPane = new JScrollPane(responseArea);
+        responseScrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+        responsePanel.add(responseScrollPane, BorderLayout.CENTER);
         splitPane.setBottomComponent(responsePanel);
         
         executionPanel.add(splitPane, BorderLayout.CENTER);
@@ -286,6 +305,8 @@ public class NodeConfigPanel extends JPanel {
         JTextArea textArea = new JTextArea();
         textArea.setFont(new Font("Monospaced", Font.PLAIN, 12));
         textArea.setTabSize(2);
+        textArea.setLineWrap(true);
+        textArea.setWrapStyleWord(true);
         return textArea;
     }
     
@@ -332,6 +353,14 @@ public class NodeConfigPanel extends JPanel {
                 tabbedPane.removeTabAt(index);
             }
         }
+        
+        // Restore selected tab index
+        int savedIndex = node.getSelectedTabIndex();
+        if (savedIndex >= 0 && savedIndex < tabbedPane.getTabCount()) {
+            tabbedPane.setSelectedIndex(savedIndex);
+        } else {
+            tabbedPane.setSelectedIndex(0);
+        }
     }
     
     /**
@@ -360,6 +389,9 @@ public class NodeConfigPanel extends JPanel {
             PostmanRequest request = (PostmanRequest) currentNode;
             request.setBody(bodyArea.getText());
         }
+        
+        // Save selected tab index
+        currentNode.setSelectedTabIndex(tabbedPane.getSelectedIndex());
     }
     
     /**

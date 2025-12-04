@@ -24,6 +24,7 @@ public abstract class PostmanNode extends DefaultMutableTreeNode {
     private Map<String, String> headers = new HashMap<>();
     private String prescript = "";
     private String postscript = "";
+    private int selectedTabIndex = 0;
 
     public PostmanNode() {
         this.id = UUID.randomUUID().toString();
@@ -82,6 +83,14 @@ public abstract class PostmanNode extends DefaultMutableTreeNode {
 
     public void setPostscript(String postscript) {
         this.postscript = postscript;
+    }
+
+    public int getSelectedTabIndex() {
+        return selectedTabIndex;
+    }
+
+    public void setSelectedTabIndex(int selectedTabIndex) {
+        this.selectedTabIndex = selectedTabIndex;
     }
 
     @Override

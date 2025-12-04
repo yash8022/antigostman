@@ -104,6 +104,15 @@ public class PostmanApp extends JFrame {
 
 		// Load last opened project
 		SwingUtilities.invokeLater(this::restoreWorkspace);
+	
+		// Add window listener to save before closing
+		addWindowListener(new java.awt.event.WindowAdapter() {
+			@Override
+			public void windowClosing(java.awt.event.WindowEvent e) {
+				// Save all projects before closing
+				saveAllProjects();
+			}
+		});
 	}
 
 	private void initMenu() {
@@ -269,6 +278,30 @@ public class PostmanApp extends JFrame {
 		});
 
 		urlField = new JTextField();
+	urlField.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
+		@Override
+		public void insertUpdate(javax.swing.event.DocumentEvent e) {
+			saveUrlToModel();
+		}
+
+		@Override
+		public void removeUpdate(javax.swing.event.DocumentEvent e) {
+			saveUrlToModel();
+		}
+
+		@Override
+		public void changedUpdate(javax.swing.event.DocumentEvent e) {
+			saveUrlToModel();
+		}
+
+		private void saveUrlToModel() {
+			if (currentNode instanceof PostmanRequest) {
+				PostmanRequest req = (PostmanRequest) currentNode;
+				req.setUrl(urlField.getText());
+				// Don't autosave on every keystroke, let window close or node switch handle it
+			}
+		}
+	});
 
 		sendButton = new JButton("Send");
 		sendButton.addActionListener(e ->
@@ -307,28 +340,33 @@ public class PostmanApp extends JFrame {
 		nodeConfigPanel.loadNode(node);
 
 		// Show/hide request toolbar and load request-specific fields
-		if (node instanceof PostmanRequest) {
-			PostmanRequest req = (PostmanRequest) node;
-			urlField.setText(req.getUrl());
-			methodComboBox.setSelectedItem(req.getMethod());
-			bodyTypeComboBox.setSelectedItem(req.getBodyType() != null ? req.getBodyType() : "TEXT");
+	if (node instanceof PostmanRequest) {
+		PostmanRequest req = (PostmanRequest) node;
+		System.out.println("Loading request: " + req.getName());
+		System.out.println("  URL: " + req.getUrl());
+		System.out.println("  Method: " + req.getMethod());
+		System.out.println("  BodyType: " + req.getBodyType());
+		
+		urlField.setText(req.getUrl());
+		methodComboBox.setSelectedItem(req.getMethod());
+		bodyTypeComboBox.setSelectedItem(req.getBodyType() != null ? req.getBodyType() : "TEXT");
 
-			// Show request toolbar
-			Component[] components = nodeConfigPanel.getParent().getComponents();
-			for (Component comp : components) {
-				if (comp instanceof JPanel && comp != nodeConfigPanel) {
-					comp.setVisible(true);
-				}
-			}
-		} else {
-			// Hide request toolbar for collections/folders
-			Component[] components = nodeConfigPanel.getParent().getComponents();
-			for (Component comp : components) {
-				if (comp instanceof JPanel && comp != nodeConfigPanel) {
-					comp.setVisible(false);
-				}
+		// Show request toolbar
+		Component[] components = nodeConfigPanel.getParent().getComponents();
+		for (Component comp : components) {
+			if (comp instanceof JPanel && comp != nodeConfigPanel) {
+				comp.setVisible(true);
 			}
 		}
+	} else {
+		// Hide request toolbar for collections/folders
+		Component[] components = nodeConfigPanel.getParent().getComponents();
+		for (Component comp : components) {
+			if (comp instanceof JPanel && comp != nodeConfigPanel) {
+				comp.setVisible(false);
+			}
+		}
+	}
 	}
 
 	private void saveCurrentNodeState() {
@@ -1044,6 +1082,36 @@ public class PostmanApp extends JFrame {
 			return (PostmanCollection) node;
 		}
 		return getCollectionForNode((PostmanNode) node.getParent());
+	}
+
+	private void saveAllProjects() {
+		// Save current node state first
+		saveCurrentNodeState();
+		
+		System.out.println("=== Saving all projects ===");
+		if (currentNode instanceof PostmanRequest) {
+			PostmanRequest req = (PostmanRequest) currentNode;
+			System.out.println("Current request - URL: " + req.getUrl() + ", Method: " + req.getMethod() + ", BodyType: " + req.getBodyType());
+		}
+		
+		// Save all open collections
+		for (Map.Entry<PostmanCollection, File> entry : collectionFileMap.entrySet()) {
+			PostmanCollection collection = entry.getKey();
+			File file = entry.getValue();
+			
+			// Collect expansion state
+			Set<String> expandedIds = new HashSet<>();
+			collectExpandedNodeIds(collection, expandedIds);
+			
+			try {
+				projectService.saveProject(collection, file, expandedIds);
+				System.out.println("Saved " + collection.getName() + " to " + file.getAbsolutePath());
+			} catch (Exception e) {
+				System.err.println("Failed to save " + collection.getName() + ": " + e.getMessage());
+				e.printStackTrace();
+			}
+		}
+		System.out.println("=== Save complete ===");
 	}
 
 	private void addNewCollection() {

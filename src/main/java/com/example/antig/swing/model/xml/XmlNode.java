@@ -28,6 +28,7 @@ public abstract class XmlNode {
     private String prescript = "";
     private String postscript = "";
     private boolean expanded = false; // Track if node was expanded in UI
+    private int selectedTabIndex = 0;
 
     public XmlNode() {
     }
@@ -91,5 +92,13 @@ public abstract class XmlNode {
     
     public void setExpanded(boolean expanded) {
         this.expanded = expanded;
+    }
+
+    public int getSelectedTabIndex() {
+        return selectedTabIndex;
+    }
+
+    public void setSelectedTabIndex(int selectedTabIndex) {
+        this.selectedTabIndex = selectedTabIndex;
     }
 }
