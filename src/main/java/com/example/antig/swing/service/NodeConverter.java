@@ -140,6 +140,7 @@ public class NodeConverter {
             xmlRequest.setBody(request.getBody() != null ? request.getBody() : "");
             xmlRequest.setParams(request.getParams() != null ? request.getParams() : "");
             xmlRequest.setBodyType(request.getBodyType() != null ? request.getBodyType() : "TEXT");
+            xmlRequest.setExecutionTabIndex(request.getExecutionTabIndex());
             xmlNode = xmlRequest;
             
         } else {
@@ -250,6 +251,7 @@ public class NodeConverter {
             request.setBody(xmlRequest.getBody() != null ? xmlRequest.getBody() : "");
             request.setParams(xmlRequest.getParams() != null ? xmlRequest.getParams() : "");
             request.setBodyType(xmlRequest.getBodyType() != null ? xmlRequest.getBodyType() : "TEXT");
+            request.setExecutionTabIndex(xmlRequest.getExecutionTabIndex());
             postmanNode = request;
             
         } else {

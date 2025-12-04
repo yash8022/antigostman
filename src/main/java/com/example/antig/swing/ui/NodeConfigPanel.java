@@ -44,6 +44,11 @@ public class NodeConfigPanel extends JPanel {
     private RSyntaxTextArea bodyArea;
     private JTextArea responseArea;
     private JPanel executionPanel;
+    private JTabbedPane executionTabbedPane;
+    private JTextArea requestHeadersArea;
+    private JTextArea requestBodyArea;
+    private JTextArea responseHeadersArea;
+    private JTextArea responseBodyArea;
     
     private PostmanNode currentNode;
 
@@ -276,9 +281,9 @@ public class NodeConfigPanel extends JPanel {
     private void createExecutionPanel() {
         executionPanel = new JPanel(new BorderLayout());
         
-        // Split into two parts: body (top) and response (bottom)
+        // Split into two parts: body (top) and execution tabs (bottom)
         JSplitPane splitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT);
-        splitPane.setResizeWeight(0.3); // 30% for body, 70% for response
+        splitPane.setResizeWeight(0.3); // 30% for body, 70% for execution tabs
         
         // Top: Body
         JPanel bodyPanel = new JPanel(new BorderLayout());
@@ -288,15 +293,41 @@ public class NodeConfigPanel extends JPanel {
         bodyPanel.add(bodyScrollPane, BorderLayout.CENTER);
         splitPane.setTopComponent(bodyPanel);
         
-        // Bottom: Response
-        responseArea = createTextArea();
-        responseArea.setEditable(false);
-        JPanel responsePanel = new JPanel(new BorderLayout());
-        responsePanel.add(new JLabel("Response:"), BorderLayout.NORTH);
-        JScrollPane responseScrollPane = new JScrollPane(responseArea);
-        responseScrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
-        responsePanel.add(responseScrollPane, BorderLayout.CENTER);
-        splitPane.setBottomComponent(responsePanel);
+        // Bottom: Execution tabs
+        executionTabbedPane = new JTabbedPane();
+        
+        // Tab 1: Request Headers
+        requestHeadersArea = createTextArea();
+        requestHeadersArea.setEditable(false);
+        JScrollPane reqHeadersScroll = new JScrollPane(requestHeadersArea);
+        reqHeadersScroll.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+        executionTabbedPane.addTab("Request Headers", reqHeadersScroll);
+        
+        // Tab 2: Request Body
+        requestBodyArea = createTextArea();
+        requestBodyArea.setEditable(false);
+        JScrollPane reqBodyScroll = new JScrollPane(requestBodyArea);
+        reqBodyScroll.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+        executionTabbedPane.addTab("Request Body", reqBodyScroll);
+        
+        // Tab 3: Response Headers
+        responseHeadersArea = createTextArea();
+        responseHeadersArea.setEditable(false);
+        JScrollPane respHeadersScroll = new JScrollPane(responseHeadersArea);
+        respHeadersScroll.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+        executionTabbedPane.addTab("Response Headers", respHeadersScroll);
+        
+        // Tab 4: Response Body
+        responseBodyArea = createTextArea();
+        responseBodyArea.setEditable(false);
+        JScrollPane respBodyScroll = new JScrollPane(responseBodyArea);
+        respBodyScroll.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+        executionTabbedPane.addTab("Response Body", respBodyScroll);
+        
+        // Keep reference to old responseArea for backward compatibility
+        responseArea = responseBodyArea;
+        
+        splitPane.setBottomComponent(executionTabbedPane);
         
         executionPanel.add(splitPane, BorderLayout.CENTER);
     }
@@ -345,7 +376,21 @@ public class NodeConfigPanel extends JPanel {
             bodyArea.setText(request.getBody() != null ? request.getBody() : "");
             setBodySyntax(request.getBodyType());
             
-            responseArea.setText(""); // Clear previous response
+            // Clear execution tabs
+            if (requestHeadersArea != null) requestHeadersArea.setText("");
+            if (requestBodyArea != null) requestBodyArea.setText("");
+            if (responseHeadersArea != null) responseHeadersArea.setText("");
+            if (responseBodyArea != null) responseBodyArea.setText("");
+            
+            // Restore execution tab index
+            if (executionTabbedPane != null) {
+                int execTabIndex = request.getExecutionTabIndex();
+                if (execTabIndex >= 0 && execTabIndex < executionTabbedPane.getTabCount()) {
+                    executionTabbedPane.setSelectedIndex(execTabIndex);
+                } else {
+                    executionTabbedPane.setSelectedIndex(0);
+                }
+            }
         } else {
             // Remove execution tab if present
             int index = tabbedPane.indexOfComponent(executionPanel);
@@ -388,6 +433,11 @@ public class NodeConfigPanel extends JPanel {
         if (currentNode instanceof PostmanRequest) {
             PostmanRequest request = (PostmanRequest) currentNode;
             request.setBody(bodyArea.getText());
+            
+            // Save execution tab index
+            if (executionTabbedPane != null) {
+                request.setExecutionTabIndex(executionTabbedPane.getSelectedIndex());
+            }
         }
         
         // Save selected tab index
@@ -399,6 +449,49 @@ public class NodeConfigPanel extends JPanel {
      */
     public JTextArea getResponseArea() {
         return responseArea;
+    }
+    
+    /**
+     * Get the execution tabbed pane.
+     */
+    public JTabbedPane getExecutionTabbedPane() {
+        return executionTabbedPane;
+    }
+    
+    /**
+     * Set request headers for display.
+     */
+    public void setRequestHeaders(String headers) {
+        if (requestHeadersArea != null) {
+            requestHeadersArea.setText(headers);
+        }
+    }
+    
+    /**
+     * Set request body for display.
+     */
+    public void setRequestBody(String body) {
+        if (requestBodyArea != null) {
+            requestBodyArea.setText(body);
+        }
+    }
+    
+    /**
+     * Set response headers for display.
+     */
+    public void setResponseHeaders(String headers) {
+        if (responseHeadersArea != null) {
+            responseHeadersArea.setText(headers);
+        }
+    }
+    
+    /**
+     * Set response body for display.
+     */
+    public void setResponseBody(String body) {
+        if (responseBodyArea != null) {
+            responseBodyArea.setText(body);
+        }
     }
     
     /**

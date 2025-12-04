@@ -57,4 +57,14 @@ public class PostmanRequest extends PostmanNode {
     public void setBodyType(String bodyType) {
         this.bodyType = bodyType;
     }
+
+    private int executionTabIndex = 0;
+
+    public int getExecutionTabIndex() {
+        return executionTabIndex;
+    }
+
+    public void setExecutionTabIndex(int executionTabIndex) {
+        this.executionTabIndex = executionTabIndex;
+    }
 }
