@@ -41,7 +41,7 @@ public class NodeConfigPanel extends JPanel {
     private RSyntaxTextArea postscriptArea;
     
     // Request-only tabs
-    private RSyntaxTextArea paramsArea;
+    private RSyntaxTextArea bodyArea;
     private JTextArea responseArea;
     private JPanel executionPanel;
     
@@ -77,6 +77,9 @@ public class NodeConfigPanel extends JPanel {
         postscriptArea = createCodeEditor();
         tabbedPane.addTab("Postscript", new RTextScrollPane(postscriptArea));
         
+        // Body Editor (initialized before execution panel so it can be added there)
+        bodyArea = createBodyEditor();
+
         // Tab 5: Execution (for requests only)
         createExecutionPanel();
         
@@ -113,8 +116,8 @@ public class NodeConfigPanel extends JPanel {
         caretMap.put("headers", headersArea.getCaretPosition());
         caretMap.put("prescript", prescriptArea.getCaretPosition());
         caretMap.put("postscript", postscriptArea.getCaretPosition());
-        if (paramsArea != null) {
-            caretMap.put("params", paramsArea.getCaretPosition());
+        if (bodyArea != null) {
+            caretMap.put("body", bodyArea.getCaretPosition());
         }
         nodeCaretMap.put(nodeId, caretMap);
     }
@@ -136,8 +139,8 @@ public class NodeConfigPanel extends JPanel {
         safeSet.accept(headersArea, caretMap.getOrDefault("headers", 0));
         safeSet.accept(prescriptArea, caretMap.getOrDefault("prescript", 0));
         safeSet.accept(postscriptArea, caretMap.getOrDefault("postscript", 0));
-        if (paramsArea != null) {
-            safeSet.accept(paramsArea, caretMap.getOrDefault("params", 0));
+        if (bodyArea != null) {
+            safeSet.accept(bodyArea, caretMap.getOrDefault("body", 0));
         }
     }
 
@@ -235,19 +238,38 @@ public class NodeConfigPanel extends JPanel {
         });
     }
     
+    private RSyntaxTextArea createBodyEditor() {
+        RSyntaxTextArea textArea = new RSyntaxTextArea();
+        textArea.setSyntaxEditingStyle(SyntaxConstants.SYNTAX_STYLE_NONE);
+        textArea.setCodeFoldingEnabled(true);
+        textArea.setAntiAliasingEnabled(true);
+        textArea.setTabSize(2);
+        
+        // Focus listener for autosave
+        textArea.addFocusListener(new java.awt.event.FocusAdapter() {
+            @Override
+            public void focusLost(java.awt.event.FocusEvent e) {
+                saveNode();
+                if (autoSaveCallback != null) {
+                    autoSaveCallback.run();
+                }
+            }
+        });
+        return textArea;
+    }
+
     private void createExecutionPanel() {
         executionPanel = new JPanel(new BorderLayout());
         
-        // Split into two parts: params (top) and response (bottom)
+        // Split into two parts: body (top) and response (bottom)
         JSplitPane splitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT);
-        splitPane.setResizeWeight(0.3); // 30% for params, 70% for response
+        splitPane.setResizeWeight(0.3); // 30% for body, 70% for response
         
-        // Top: Params
-        paramsArea = createPropertiesEditor();
-        JPanel paramsPanel = new JPanel(new BorderLayout());
-        paramsPanel.add(new JLabel("Request Parameters (key=value format):"), BorderLayout.NORTH);
-        paramsPanel.add(new RTextScrollPane(paramsArea), BorderLayout.CENTER);
-        splitPane.setTopComponent(paramsPanel);
+        // Top: Body
+        JPanel bodyPanel = new JPanel(new BorderLayout());
+        bodyPanel.add(new JLabel("Request Body"), BorderLayout.NORTH);
+        bodyPanel.add(new RTextScrollPane(bodyArea), BorderLayout.CENTER);
+        splitPane.setTopComponent(bodyPanel);
         
         // Bottom: Response
         responseArea = createTextArea();
@@ -299,7 +321,9 @@ public class NodeConfigPanel extends JPanel {
             }
             
             PostmanRequest request = (PostmanRequest) node;
-            paramsArea.setText(request.getParams() != null ? request.getParams() : "");
+            bodyArea.setText(request.getBody() != null ? request.getBody() : "");
+            setBodySyntax(request.getBodyType());
+            
             responseArea.setText(""); // Clear previous response
         } else {
             // Remove execution tab if present
@@ -334,7 +358,7 @@ public class NodeConfigPanel extends JPanel {
         // Save request-specific data
         if (currentNode instanceof PostmanRequest) {
             PostmanRequest request = (PostmanRequest) currentNode;
-            request.setParams(paramsArea.getText());
+            request.setBody(bodyArea.getText());
         }
     }
     
@@ -353,7 +377,7 @@ public class NodeConfigPanel extends JPanel {
         headersArea.setText("");
         prescriptArea.setText("");
         postscriptArea.setText("");
-        paramsArea.setText("");
+        bodyArea.setText("");
         responseArea.setText("");
     }
     
@@ -406,5 +430,26 @@ public class NodeConfigPanel extends JPanel {
         }
         
         return map;
+    }
+    public void setBodySyntax(String bodyType) {
+        if (bodyArea == null) return;
+        
+        if (bodyType == null) bodyType = "TEXT";
+        
+        switch (bodyType.toUpperCase()) {
+            case "JSON":
+                bodyArea.setSyntaxEditingStyle(SyntaxConstants.SYNTAX_STYLE_JSON);
+                break;
+            case "XML":
+                bodyArea.setSyntaxEditingStyle(SyntaxConstants.SYNTAX_STYLE_XML);
+                break;
+            case "FORM ENCODED":
+                bodyArea.setSyntaxEditingStyle(SyntaxConstants.SYNTAX_STYLE_PROPERTIES_FILE);
+                break;
+            case "TEXT":
+            default:
+                bodyArea.setSyntaxEditingStyle(SyntaxConstants.SYNTAX_STYLE_NONE);
+                break;
+        }
     }
 }

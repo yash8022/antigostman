@@ -9,11 +9,12 @@ import java.util.List;
 import java.util.Properties;
 
 /**
- * Manages the list of recently opened project files.
+ * Manages the list of recently opened project files and open workspace files.
  */
 public class RecentProjectsManager {
     private static final String PREFS_FILE = System.getProperty("user.home") + "/.postman-clone-recent.properties";
     private static final String RECENT_KEY_PREFIX = "recent.";
+    private static final String OPEN_PROJECT_KEY_PREFIX = "open.project.";
     private static final String THEME_KEY = "theme";
     private static final int MAX_RECENT = 10;
     
@@ -65,66 +66,106 @@ public class RecentProjectsManager {
         saveRecentProjects();
     }
     
-    private void loadRecentProjects() {
-        Properties props = new Properties();
-        File prefsFile = new File(PREFS_FILE);
+    /**
+     * Save the list of currently open projects.
+     */
+    public void saveOpenProjects(List<File> openFiles) {
+        Properties props = loadProperties();
         
-        if (prefsFile.exists()) {
-            try (FileInputStream fis = new FileInputStream(prefsFile)) {
-                props.load(fis);
-                
-                for (int i = 0; i < MAX_RECENT; i++) {
-                    String path = props.getProperty(RECENT_KEY_PREFIX + i);
-                    if (path != null && !path.isEmpty()) {
-                        recentProjects.add(path);
-                    }
-                }
-            } catch (IOException e) {
-                e.printStackTrace();
+        // Clear existing open projects from props
+        List<String> keysToRemove = new ArrayList<>();
+        for (String key : props.stringPropertyNames()) {
+            if (key.startsWith(OPEN_PROJECT_KEY_PREFIX)) {
+                keysToRemove.add(key);
+            }
+        }
+        for (String key : keysToRemove) {
+            props.remove(key);
+        }
+        
+        // Add new open projects
+        for (int i = 0; i < openFiles.size(); i++) {
+            props.setProperty(OPEN_PROJECT_KEY_PREFIX + i, openFiles.get(i).getAbsolutePath());
+        }
+        
+        saveProperties(props);
+    }
+    
+    /**
+     * Get the list of open project file paths.
+     */
+    public List<String> getOpenProjects() {
+        Properties props = loadProperties();
+        List<String> openProjects = new ArrayList<>();
+        
+        int i = 0;
+        while (true) {
+            String path = props.getProperty(OPEN_PROJECT_KEY_PREFIX + i);
+            if (path == null) {
+                break;
+            }
+            File file = new File(path);
+            if (file.exists()) {
+                openProjects.add(file.getAbsolutePath());
+            }
+            i++;
+        }
+        
+        return openProjects;
+    }
+
+    private void loadRecentProjects() {
+        Properties props = loadProperties();
+        recentProjects.clear();
+        for (int i = 0; i < MAX_RECENT; i++) {
+            String path = props.getProperty(RECENT_KEY_PREFIX + i);
+            if (path != null && !path.isEmpty()) {
+                recentProjects.add(path);
             }
         }
     }
     
     private void saveRecentProjects() {
-        Properties props = new Properties();
+        Properties props = loadProperties();
         
+        // Clear existing recent keys
+        List<String> keysToRemove = new ArrayList<>();
+        for (String key : props.stringPropertyNames()) {
+            if (key.startsWith(RECENT_KEY_PREFIX)) {
+                keysToRemove.add(key);
+            }
+        }
+        for (String key : keysToRemove) {
+            props.remove(key);
+        }
+
         for (int i = 0; i < recentProjects.size(); i++) {
             props.setProperty(RECENT_KEY_PREFIX + i, recentProjects.get(i));
         }
         
-        try (FileOutputStream fos = new FileOutputStream(PREFS_FILE)) {
-            props.store(fos, "Recent Postman Clone Projects");
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        saveProperties(props);
     }
     
     /**
      * Get the theme preference ("light" or "dark").
      */
     public String getThemePreference() {
-        Properties props = new Properties();
-        File prefsFile = new File(PREFS_FILE);
-        
-        if (prefsFile.exists()) {
-            try (FileInputStream fis = new FileInputStream(prefsFile)) {
-                props.load(fis);
-                return props.getProperty(THEME_KEY, "dark"); // Default to dark
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-        return "dark"; // Default to dark
+        Properties props = loadProperties();
+        return props.getProperty(THEME_KEY, "dark"); // Default to dark
     }
     
     /**
      * Set the theme preference ("light" or "dark").
      */
     public void setThemePreference(String theme) {
+        Properties props = loadProperties();
+        props.setProperty(THEME_KEY, theme);
+        saveProperties(props);
+    }
+
+    private Properties loadProperties() {
         Properties props = new Properties();
         File prefsFile = new File(PREFS_FILE);
-        
-        // Load existing properties first
         if (prefsFile.exists()) {
             try (FileInputStream fis = new FileInputStream(prefsFile)) {
                 props.load(fis);
@@ -132,11 +173,10 @@ public class RecentProjectsManager {
                 e.printStackTrace();
             }
         }
-        
-        // Set theme
-        props.setProperty(THEME_KEY, theme);
-        
-        // Save
+        return props;
+    }
+
+    private void saveProperties(Properties props) {
         try (FileOutputStream fos = new FileOutputStream(PREFS_FILE)) {
             props.store(fos, "Postman Clone Preferences");
         } catch (IOException e) {

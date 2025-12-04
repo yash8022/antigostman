@@ -47,4 +47,14 @@ public class PostmanRequest extends PostmanNode {
     public void setParams(String params) {
         this.params = params;
     }
+
+    private String bodyType = "TEXT";
+
+    public String getBodyType() {
+        return bodyType;
+    }
+
+    public void setBodyType(String bodyType) {
+        this.bodyType = bodyType;
+    }
 }

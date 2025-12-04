@@ -3,6 +3,7 @@ package com.example.antig.swing;
 import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Dimension;
+import java.awt.FlowLayout;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.io.File;
@@ -10,9 +11,12 @@ import java.net.http.HttpResponse;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.Properties;
 import java.util.Set;
+import java.util.TreeMap;
 
 import javax.swing.BorderFactory;
+import javax.swing.Box;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JFileChooser;
@@ -32,6 +36,7 @@ import javax.swing.SwingUtilities;
 import javax.swing.SwingWorker;
 import javax.swing.UIManager;
 import javax.swing.tree.DefaultTreeModel;
+import javax.swing.tree.TreeNode;
 import javax.swing.tree.TreePath;
 
 import com.example.antig.swing.model.PostmanCollection;
@@ -43,7 +48,12 @@ import com.example.antig.swing.service.RecentProjectsManager;
 import com.example.antig.swing.ui.NodeConfigPanel;
 import com.example.antig.swing.ui.PostmanTreeCellRenderer;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.socle2.utils.JSONUtils;
+import com.socle2.utils.PropertiesUtils;
 
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
 public class PostmanApp extends JFrame {
 
 	private final HttpClientService httpClientService;
@@ -61,6 +71,7 @@ public class PostmanApp extends JFrame {
 	// Request execution components
 	private JTextField urlField;
 	private JComboBox<String> methodComboBox;
+	private JComboBox<String> bodyTypeComboBox;
 	private JTextArea requestBodyArea;
 	private JButton sendButton;
 
@@ -88,7 +99,7 @@ public class PostmanApp extends JFrame {
 		initComponents();
 
 		// Load last opened project
-		SwingUtilities.invokeLater(this::loadLastOpenedProject);
+		SwingUtilities.invokeLater(this::restoreWorkspace);
 	}
 
 	private void initMenu() {
@@ -145,13 +156,13 @@ public class PostmanApp extends JFrame {
 		workspaceRoot.add(defaultCollection);
 		treeModel.reload();
 
-		        // Set custom cell renderer for icons
-        projectTree.setCellRenderer(new PostmanTreeCellRenderer());
-        
-        // Enable Drag and Drop
-        projectTree.setDragEnabled(true);
-        projectTree.setDropMode(javax.swing.DropMode.ON_OR_INSERT);
-        projectTree.setTransferHandler(new TreeTransferHandler());
+		// Set custom cell renderer for icons
+		projectTree.setCellRenderer(new PostmanTreeCellRenderer());
+
+		// Enable Drag and Drop
+		projectTree.setDragEnabled(true);
+		projectTree.setDropMode(javax.swing.DropMode.ON_OR_INSERT);
+		projectTree.setTransferHandler(new TreeTransferHandler());
 
 		// Increase row height for better spacing
 		projectTree.setRowHeight(28);
@@ -211,6 +222,7 @@ public class PostmanApp extends JFrame {
 
 		// Center: Tabbed configuration panel
 		nodeConfigPanel = new NodeConfigPanel();
+		nodeConfigPanel.setAutoSaveCallback(this::autoSaveProject);
 		rightPanel.add(nodeConfigPanel, BorderLayout.CENTER);
 
 		mainSplitPane.setRightComponent(rightPanel);
@@ -224,26 +236,48 @@ public class PostmanApp extends JFrame {
 		String[] methods = { "GET", "POST", "PUT", "DELETE", "PATCH" };
 		methodComboBox = new JComboBox<>(methods);
 		methodComboBox.setPreferredSize(new Dimension(100, 30));
-        methodComboBox.addActionListener(e -> {
-            if (currentNode instanceof PostmanRequest) {
-                PostmanRequest req = (PostmanRequest) currentNode;
-                String newMethod = (String) methodComboBox.getSelectedItem();
-                if (newMethod != null && !newMethod.equals(req.getMethod())) {
-                    req.setMethod(newMethod);
-                    // Notify tree model of change to trigger repaint (icon update)
-                    treeModel.nodeChanged(req);
-                    autoSaveProject();
-                }
-            }
-        });
+		methodComboBox.addActionListener(e -> {
+			if (currentNode instanceof PostmanRequest) {
+				PostmanRequest req = (PostmanRequest) currentNode;
+				String newMethod = (String) methodComboBox.getSelectedItem();
+				if (newMethod != null && !newMethod.equals(req.getMethod())) {
+					req.setMethod(newMethod);
+					// Notify tree model of change to trigger repaint (icon update)
+					treeModel.nodeChanged(req);
+					autoSaveProject();
+				}
+			}
+		});
+
+		String[] bodyTypes = { "TEXT", "JSON", "XML", "FORM ENCODED" };
+		bodyTypeComboBox = new JComboBox<>(bodyTypes);
+		bodyTypeComboBox.setPreferredSize(new Dimension(120, 30));
+		bodyTypeComboBox.addActionListener(e -> {
+			if (currentNode instanceof PostmanRequest) {
+				PostmanRequest req = (PostmanRequest) currentNode;
+				String newType = (String) bodyTypeComboBox.getSelectedItem();
+				if (newType != null && !newType.equals(req.getBodyType())) {
+					req.setBodyType(newType);
+					nodeConfigPanel.setBodySyntax(newType);
+					autoSaveProject();
+				}
+			}
+		});
 
 		urlField = new JTextField();
 
 		sendButton = new JButton("Send");
-		sendButton.addActionListener(e -> sendRequest());
+		sendButton.addActionListener(e ->
+
+		sendRequest());
 		sendButton.setPreferredSize(new Dimension(80, 30));
 
-		toolbar.add(methodComboBox, BorderLayout.WEST);
+		JPanel leftPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+		leftPanel.add(methodComboBox);
+		leftPanel.add(Box.createHorizontalStrut(5));
+		leftPanel.add(bodyTypeComboBox);
+
+		toolbar.add(leftPanel, BorderLayout.WEST);
 		toolbar.add(urlField, BorderLayout.CENTER);
 		toolbar.add(sendButton, BorderLayout.EAST);
 
@@ -273,6 +307,7 @@ public class PostmanApp extends JFrame {
 			PostmanRequest req = (PostmanRequest) node;
 			urlField.setText(req.getUrl());
 			methodComboBox.setSelectedItem(req.getMethod());
+			bodyTypeComboBox.setSelectedItem(req.getBodyType() != null ? req.getBodyType() : "TEXT");
 
 			// Show request toolbar
 			Component[] components = nodeConfigPanel.getParent().getComponents();
@@ -305,6 +340,7 @@ public class PostmanApp extends JFrame {
 			PostmanRequest req = (PostmanRequest) currentNode;
 			req.setUrl(urlField.getText());
 			req.setMethod((String) methodComboBox.getSelectedItem());
+			req.setBodyType((String) bodyTypeComboBox.getSelectedItem());
 		}
 	}
 
@@ -355,6 +391,7 @@ public class PostmanApp extends JFrame {
 			JMenuItem closeProject = new JMenuItem("Close Project");
 			closeProject.addActionListener(e -> {
 				collectionFileMap.remove(node);
+				updateOpenProjectsList();
 				treeModel.removeNodeFromParent(node);
 				currentNode = null;
 				nodeConfigPanel.loadNode(null);
@@ -421,6 +458,7 @@ public class PostmanApp extends JFrame {
 			// If deleting a collection, remove from file map
 			if (isCollection) {
 				collectionFileMap.remove(node);
+				updateOpenProjectsList();
 			}
 
 			// Select parent or sibling to keep selection valid
@@ -512,10 +550,59 @@ public class PostmanApp extends JFrame {
 		}
 	}
 
+	private Map<String, String> createEnv(PostmanNode node) {
+		if (node == null) {
+			return Map.of();
+		}
+
+		TreeNode parent = node.getParent();
+
+		Map<String, String> parentEnvMap = parent == null ? Map.of() : createEnv((PostmanNode) parent);
+
+		TreeMap<String, String> map = new TreeMap<>();
+		map.putAll(parentEnvMap);
+		map.putAll(node.getEnvironment());
+
+		Properties env = new Properties();
+		env.putAll(map);
+
+		PropertiesUtils.analyseAndProcessProperties(env, Map.of());
+
+		return PropertiesUtils.propertiesToMap(env);
+	}
+
+	private Map<String, String> createHeaders(PostmanNode node, Map<String, String> env) {
+		if (node == null) {
+			return Map.of();
+		}
+
+		TreeNode parent = node.getParent();
+
+		Map<String, String> parentHeaderMap = parent == null ? Map.of() : createHeaders((PostmanNode) parent, env);
+
+		TreeMap<String, String> map = new TreeMap<>();
+		map.putAll(parentHeaderMap);
+		map.putAll(node.getHeaders());
+
+		Properties header = new Properties();
+		header.putAll(map);
+
+		PropertiesUtils.analyseAndProcessProperties(header, env);
+
+		return PropertiesUtils.propertiesToMap(header);
+	}
+
 	private void sendRequest() {
 		if (!(currentNode instanceof PostmanRequest)) {
 			return;
 		}
+
+		Map<String, String> env = createEnv(currentNode);
+		Map<String, String> headers = createHeaders(currentNode, env);
+
+		log.info("Env : {}", JSONUtils.toJson(env, true));
+		log.info("Headers : {}", JSONUtils.toJson(headers, true));
+
 		saveCurrentNodeState(); // Ensure latest edits are saved
 
 		PostmanRequest req = (PostmanRequest) currentNode;
@@ -595,6 +682,7 @@ public class PostmanApp extends JFrame {
 				projectService.saveProject(collection, file);
 
 				collectionFileMap.put(collection, file);
+				updateOpenProjectsList();
 				recentProjectsManager.addRecentProject(file);
 				updateRecentProjectsMenu((JMenu) getJMenuBar().getMenu(0).getMenuComponent(4));
 				// Update title bar with saved file path
@@ -615,46 +703,86 @@ public class PostmanApp extends JFrame {
 
 	private void loadProjectFromFile(File file) {
 		try {
-			// Load project with expansion state
-			Object[] result = projectService.loadProjectWithExpansionState(file);
-			PostmanCollection loadedCollection = (PostmanCollection) result[0];
-			@SuppressWarnings("unchecked")
-			Set<String> expandedIds = (Set<String>) result[1];
+			PostmanCollection loadedCollection = loadProjectInternal(file);
 
-			// Remove default "My Collection" if it's the only node and empty
-			if (workspaceRoot.getChildCount() == 1) {
-				PostmanNode child = (PostmanNode) workspaceRoot.getChildAt(0);
-				if (child instanceof PostmanCollection && "My Collection".equals(child.getName())
-						&& child.getChildCount() == 0) {
-					workspaceRoot.remove(0);
-				}
-			}
-
-			// Add to workspace
-			workspaceRoot.add(loadedCollection);
-			treeModel.reload();
-
-			// Restore expansion state BEFORE showing dialog
-			restoreExpansionFromIds(loadedCollection, expandedIds);
-
-			// Scroll to collection
-			TreePath path = new TreePath(loadedCollection.getPath());
-			projectTree.scrollPathToVisible(path);
-
+			// Update UI and persistence
 			currentNode = null;
 			nodeConfigPanel.loadNode(null);
 
 			recentProjectsManager.addRecentProject(file);
 			updateRecentProjectsMenu((JMenu) getJMenuBar().getMenu(0).getMenuComponent(4));
 
-			// Map the collection to the file
-			collectionFileMap.put(loadedCollection, file);
+			updateOpenProjectsList();
 
 			setTitle(file.getAbsolutePath());
 
 		} catch (Exception e) {
 			e.printStackTrace();
 			JOptionPane.showMessageDialog(this, "Error loading: " + e.getMessage());
+		}
+	}
+
+	private PostmanCollection loadProjectInternal(File file) throws Exception {
+		// Load project with expansion state
+		Object[] result = projectService.loadProjectWithExpansionState(file);
+		PostmanCollection loadedCollection = (PostmanCollection) result[0];
+		@SuppressWarnings("unchecked")
+		java.util.Set<String> expandedIds = (java.util.Set<String>) result[1];
+
+		// Remove default "My Collection" if it's the only node and empty
+		if (workspaceRoot.getChildCount() == 1) {
+			PostmanNode child = (PostmanNode) workspaceRoot.getChildAt(0);
+			if (child instanceof PostmanCollection && "My Collection".equals(child.getName()) && child.getChildCount() == 0) {
+				treeModel.removeNodeFromParent(child);
+			}
+		}
+
+		// Add to workspace
+		treeModel.insertNodeInto(loadedCollection, workspaceRoot, workspaceRoot.getChildCount());
+
+		// Map the collection to the file
+		collectionFileMap.put(loadedCollection, file);
+
+		// Restore expansion state
+		restoreExpansionFromIds(loadedCollection, expandedIds);
+
+		// Scroll to collection
+		TreePath path = new TreePath(loadedCollection.getPath());
+		projectTree.scrollPathToVisible(path);
+
+		return loadedCollection;
+	}
+
+	private void restoreWorkspace() {
+		java.util.List<String> openProjects = recentProjectsManager.getOpenProjects();
+		boolean anyLoaded = false;
+
+		if (!openProjects.isEmpty()) {
+			for (String path : openProjects) {
+				File file = new File(path);
+				if (file.exists()) {
+					try {
+						loadProjectInternal(file);
+						anyLoaded = true;
+					} catch (Exception e) {
+						System.err.println("Failed to restore project " + path + ": " + e.getMessage());
+						e.printStackTrace();
+					}
+				}
+			}
+		}
+
+		if (anyLoaded) {
+			updateOpenProjectsList();
+		} else {
+			// Fallback to legacy behavior: load last recent project
+			java.util.List<String> recent = recentProjectsManager.getRecentProjects();
+			if (!recent.isEmpty()) {
+				File lastFile = new File(recent.get(0));
+				if (lastFile.exists()) {
+					loadProjectFromFile(lastFile);
+				}
+			}
 		}
 	}
 
@@ -705,14 +833,8 @@ public class PostmanApp extends JFrame {
 		}
 	}
 
-	private void loadLastOpenedProject() {
-		java.util.List<String> recent = recentProjectsManager.getRecentProjects();
-		if (!recent.isEmpty()) {
-			File lastFile = new File(recent.get(0));
-			if (lastFile.exists()) {
-				loadProjectFromFile(lastFile);
-			}
-		}
+	private void updateOpenProjectsList() {
+		recentProjectsManager.saveOpenProjects(new java.util.ArrayList<>(collectionFileMap.values()));
 	}
 
 	private void autoSaveProject() {
@@ -797,118 +919,134 @@ public class PostmanApp extends JFrame {
 		// This method is kept for compatibility but does nothing
 	}
 
-	    private void collectExpandedNodeIds(PostmanNode node, Set<String> expandedIds) {
-        TreePath path = new TreePath(node.getPath());
-        if (projectTree.isExpanded(path)) {
-            expandedIds.add(node.getId());
-        }
+	private void collectExpandedNodeIds(PostmanNode node, Set<String> expandedIds) {
+		TreePath path = new TreePath(node.getPath());
+		if (projectTree.isExpanded(path)) {
+			expandedIds.add(node.getId());
+		}
 
-        // Recursively check children
-        for (int i = 0; i < node.getChildCount(); i++) {
-            PostmanNode child = (PostmanNode) node.getChildAt(i);
-            collectExpandedNodeIds(child, expandedIds);
-        }
-    }
+		// Recursively check children
+		for (int i = 0; i < node.getChildCount(); i++) {
+			PostmanNode child = (PostmanNode) node.getChildAt(i);
+			collectExpandedNodeIds(child, expandedIds);
+		}
+	}
 
-    // Inner class for handling Drag and Drop
-    private class TreeTransferHandler extends javax.swing.TransferHandler {
-        @Override
-        public int getSourceActions(javax.swing.JComponent c) {
-            return MOVE;
-        }
+	// Inner class for handling Drag and Drop
+	private class TreeTransferHandler extends javax.swing.TransferHandler {
+		@Override
+		public int getSourceActions(javax.swing.JComponent c) {
+			return MOVE;
+		}
 
-        @Override
-        protected java.awt.datatransfer.Transferable createTransferable(javax.swing.JComponent c) {
-            JTree tree = (JTree) c;
-            TreePath path = tree.getSelectionPath();
-            if (path != null) {
-                PostmanNode node = (PostmanNode) path.getLastPathComponent();
-                // Prevent dragging the root workspace or collections (optional, but good for structure)
-                // Allowing dragging collections to reorder them is fine, but not into folders
-                return new java.awt.datatransfer.StringSelection(node.getId()); // Use ID as transfer data
-            }
-            return null;
-        }
+		@Override
+		protected java.awt.datatransfer.Transferable createTransferable(javax.swing.JComponent c) {
+			JTree tree = (JTree) c;
+			TreePath path = tree.getSelectionPath();
+			if (path != null) {
+				PostmanNode node = (PostmanNode) path.getLastPathComponent();
+				// Prevent dragging the root workspace or collections (optional, but good for
+				// structure)
+				// Allowing dragging collections to reorder them is fine, but not into folders
+				return new java.awt.datatransfer.StringSelection(node.getId()); // Use ID as transfer data
+			}
+			return null;
+		}
 
-        @Override
-        public boolean canImport(TransferSupport support) {
-            if (!support.isDataFlavorSupported(java.awt.datatransfer.DataFlavor.stringFlavor)) {
-                return false;
-            }
-            // Check drop location
-            JTree.DropLocation dl = (JTree.DropLocation) support.getDropLocation();
-            TreePath path = dl.getPath();
-            if (path == null) return false;
-            
-            PostmanNode targetNode = (PostmanNode) path.getLastPathComponent();
-            
-            // Can only drop into Folders or Collections (which act as folders)
-            // Or insert between nodes (parent must be folder/collection)
-            return targetNode instanceof PostmanFolder || targetNode instanceof PostmanCollection;
-        }
+		@Override
+		public boolean canImport(TransferSupport support) {
+			if (!support.isDataFlavorSupported(java.awt.datatransfer.DataFlavor.stringFlavor)) {
+				return false;
+			}
+			// Check drop location
+			JTree.DropLocation dl = (JTree.DropLocation) support.getDropLocation();
+			TreePath path = dl.getPath();
+			if (path == null) {
+				return false;
+			}
 
-        @Override
-        public boolean importData(TransferSupport support) {
-            if (!canImport(support)) {
-                return false;
-            }
-            
-            try {
-                // Get dropped node ID
-                String nodeId = (String) support.getTransferable().getTransferData(java.awt.datatransfer.DataFlavor.stringFlavor);
-                PostmanNode draggedNode = findNodeById(workspaceRoot, nodeId);
-                
-                if (draggedNode == null) return false;
+			PostmanNode targetNode = (PostmanNode) path.getLastPathComponent();
 
-                JTree.DropLocation dl = (JTree.DropLocation) support.getDropLocation();
-                TreePath destPath = dl.getPath();
-                PostmanNode targetParent = (PostmanNode) destPath.getLastPathComponent();
-                
-                // Prevent dropping into itself or its children
-                if (draggedNode == targetParent || isChildOf(draggedNode, targetParent)) {
-                    return false;
-                }
-                
-                // Perform move
-                treeModel.removeNodeFromParent(draggedNode);
-                
-                int index = dl.getChildIndex();
-                if (index == -1) {
-                    index = targetParent.getChildCount();
-                }
-                
-                treeModel.insertNodeInto(draggedNode, targetParent, index);
-                
-                // Expand target and select moved node
-                projectTree.expandPath(destPath);
-                projectTree.setSelectionPath(new TreePath(draggedNode.getPath()));
-                
-                // Autosave
-                autoSaveProject();
-                
-                return true;
-            } catch (Exception e) {
-                e.printStackTrace();
-                return false;
-            }
-        }
-        
-        private PostmanNode findNodeById(PostmanNode root, String id) {
-            if (root.getId().equals(id)) return root;
-            for (int i = 0; i < root.getChildCount(); i++) {
-                PostmanNode found = findNodeById((PostmanNode) root.getChildAt(i), id);
-                if (found != null) return found;
-            }
-            return null;
-        }
-        
-        private boolean isChildOf(PostmanNode potentialParent, PostmanNode node) {
-            if (node == null) return false;
-            if (node == potentialParent) return true;
-            if (node.getParent() == null) return false; // Reached root without finding potentialParent
-            return isChildOf(potentialParent, (PostmanNode) node.getParent());
-        }
-    }
+			// Can only drop into Folders or Collections (which act as folders)
+			// Or insert between nodes (parent must be folder/collection)
+			return targetNode instanceof PostmanFolder || targetNode instanceof PostmanCollection;
+		}
+
+		@Override
+		public boolean importData(TransferSupport support) {
+			if (!canImport(support)) {
+				return false;
+			}
+
+			try {
+				// Get dropped node ID
+				String nodeId = (String) support.getTransferable()
+						.getTransferData(java.awt.datatransfer.DataFlavor.stringFlavor);
+				PostmanNode draggedNode = findNodeById(workspaceRoot, nodeId);
+
+				if (draggedNode == null) {
+					return false;
+				}
+
+				JTree.DropLocation dl = (JTree.DropLocation) support.getDropLocation();
+				TreePath destPath = dl.getPath();
+				PostmanNode targetParent = (PostmanNode) destPath.getLastPathComponent();
+
+				// Prevent dropping into itself or its children
+				if (draggedNode == targetParent || isChildOf(draggedNode, targetParent)) {
+					return false;
+				}
+
+				// Perform move
+				treeModel.removeNodeFromParent(draggedNode);
+
+				int index = dl.getChildIndex();
+				if (index == -1) {
+					index = targetParent.getChildCount();
+				}
+
+				treeModel.insertNodeInto(draggedNode, targetParent, index);
+
+				// Expand target and select moved node
+				projectTree.expandPath(destPath);
+				projectTree.setSelectionPath(new TreePath(draggedNode.getPath()));
+
+				// Autosave
+				autoSaveProject();
+
+				return true;
+			} catch (Exception e) {
+				e.printStackTrace();
+				return false;
+			}
+		}
+
+		private PostmanNode findNodeById(PostmanNode root, String id) {
+			if (root.getId().equals(id)) {
+				return root;
+			}
+			for (int i = 0; i < root.getChildCount(); i++) {
+				PostmanNode found = findNodeById((PostmanNode) root.getChildAt(i), id);
+				if (found != null) {
+					return found;
+				}
+			}
+			return null;
+		}
+
+		private boolean isChildOf(PostmanNode potentialParent, PostmanNode node) {
+			if (node == null) {
+				return false;
+			}
+			if (node == potentialParent) {
+				return true;
+			}
+			if (node.getParent() == null) {
+				return false; // Reached root without finding potentialParent
+			}
+			return isChildOf(potentialParent, (PostmanNode) node.getParent());
+		}
+	}
 
 	public static void main(String[] args) {
 		// Single instance check
