@@ -55,10 +55,10 @@ public class NodeConfigPanel extends JPanel {
 	private JTextArea responseArea;
 	private JPanel executionPanel;
 	private JTabbedPane executionTabbedPane;
-	private JTextArea requestHeadersArea;
-	private JTextArea requestBodyArea;
-	private JTextArea responseHeadersArea;
-	private JTextArea responseBodyArea;
+	private RSyntaxTextArea requestHeadersArea;
+	private RSyntaxTextArea requestBodyArea;
+	private RSyntaxTextArea responseHeadersArea;
+	private RSyntaxTextArea responseBodyArea;
 
 	private PostmanNode currentNode;
 
@@ -313,32 +313,22 @@ public class NodeConfigPanel extends JPanel {
 		executionTabbedPane = new JTabbedPane();
 
 		// Tab 1: Request Headers
-		requestHeadersArea = createTextArea();
-		requestHeadersArea.setEditable(false);
-		JScrollPane reqHeadersScroll = new JScrollPane(requestHeadersArea);
-		reqHeadersScroll.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
-		executionTabbedPane.addTab("Request Headers", reqHeadersScroll);
+		requestHeadersArea = createReadOnlySyntaxTextArea();
+		requestHeadersArea.setSyntaxEditingStyle(SyntaxConstants.SYNTAX_STYLE_PROPERTIES_FILE);
+		executionTabbedPane.addTab("Request Headers", new RTextScrollPane(requestHeadersArea));
 
 		// Tab 2: Request Body
-		requestBodyArea = createTextArea();
-		requestBodyArea.setEditable(false);
-		JScrollPane reqBodyScroll = new JScrollPane(requestBodyArea);
-		reqBodyScroll.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
-		executionTabbedPane.addTab("Request Body", reqBodyScroll);
+		requestBodyArea = createReadOnlySyntaxTextArea();
+		executionTabbedPane.addTab("Request Body", new RTextScrollPane(requestBodyArea));
 
 		// Tab 3: Response Headers
-		responseHeadersArea = createTextArea();
-		responseHeadersArea.setEditable(false);
-		JScrollPane respHeadersScroll = new JScrollPane(responseHeadersArea);
-		respHeadersScroll.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
-		executionTabbedPane.addTab("Response Headers", respHeadersScroll);
+		responseHeadersArea = createReadOnlySyntaxTextArea();
+		responseHeadersArea.setSyntaxEditingStyle(SyntaxConstants.SYNTAX_STYLE_PROPERTIES_FILE);
+		executionTabbedPane.addTab("Response Headers", new RTextScrollPane(responseHeadersArea));
 
 		// Tab 4: Response Body
-		responseBodyArea = createTextArea();
-		responseBodyArea.setEditable(false);
-		JScrollPane respBodyScroll = new JScrollPane(responseBodyArea);
-		respBodyScroll.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
-		executionTabbedPane.addTab("Response Body", respBodyScroll);
+		responseBodyArea = createReadOnlySyntaxTextArea();
+		executionTabbedPane.addTab("Response Body", new RTextScrollPane(responseBodyArea));
 
 		// Keep reference to old responseArea for backward compatibility
 		responseArea = responseBodyArea;
@@ -348,10 +338,13 @@ public class NodeConfigPanel extends JPanel {
 		executionPanel.add(splitPane, BorderLayout.CENTER);
 	}
 
-	private JTextArea createTextArea() {
-		JTextArea textArea = new JTextArea();
-		textArea.setFont(new Font("Monospaced", Font.PLAIN, 12));
+	private RSyntaxTextArea createReadOnlySyntaxTextArea() {
+		RSyntaxTextArea textArea = new RSyntaxTextArea();
+		textArea.setSyntaxEditingStyle(SyntaxConstants.SYNTAX_STYLE_NONE);
+		textArea.setCodeFoldingEnabled(true);
+		textArea.setAntiAliasingEnabled(true);
 		textArea.setTabSize(2);
+		textArea.setEditable(false);
 		textArea.setLineWrap(true);
 		textArea.setWrapStyleWord(true);
 		return textArea;
@@ -592,20 +585,32 @@ public class NodeConfigPanel extends JPanel {
 			bodyType = "TEXT";
 		}
 
+		String style = SyntaxConstants.SYNTAX_STYLE_NONE;
 		switch (bodyType.toUpperCase()) {
 		case "JSON":
-			bodyArea.setSyntaxEditingStyle(SyntaxConstants.SYNTAX_STYLE_JSON);
+			style = SyntaxConstants.SYNTAX_STYLE_JSON;
 			break;
 		case "XML":
-			bodyArea.setSyntaxEditingStyle(SyntaxConstants.SYNTAX_STYLE_XML);
+			style = SyntaxConstants.SYNTAX_STYLE_XML;
 			break;
 		case "FORM ENCODED":
-			bodyArea.setSyntaxEditingStyle(SyntaxConstants.SYNTAX_STYLE_PROPERTIES_FILE);
+			style = SyntaxConstants.SYNTAX_STYLE_PROPERTIES_FILE;
 			break;
 		case "TEXT":
 		default:
-			bodyArea.setSyntaxEditingStyle(SyntaxConstants.SYNTAX_STYLE_NONE);
+			style = SyntaxConstants.SYNTAX_STYLE_NONE;
 			break;
+		}
+		
+		bodyArea.setSyntaxEditingStyle(style);
+		if (requestBodyArea != null) {
+			requestBodyArea.setSyntaxEditingStyle(style);
+		}
+	}
+
+	public void setResponseBodySyntax(String style) {
+		if (responseBodyArea != null) {
+			responseBodyArea.setSyntaxEditingStyle(style);
 		}
 	}
 }

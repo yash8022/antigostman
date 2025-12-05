@@ -54,6 +54,7 @@ import com.example.antig.swing.ui.NodeConfigPanel;
 import com.example.antig.swing.ui.PostmanTreeCellRenderer;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.socle2.utils.PropertiesUtils;
+import org.fife.ui.rsyntaxtextarea.SyntaxConstants;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -700,6 +701,7 @@ public class PostmanApp extends JFrame {
 			} catch (Exception e) {
 				log.error("Prescript error", e);
 				nodeConfigPanel.getResponseArea().setText("Prescript Error: " + e.getMessage());
+				nodeConfigPanel.setResponseBodySyntax(SyntaxConstants.SYNTAX_STYLE_NONE);
 				return;
 			}
 		}
@@ -741,6 +743,7 @@ public class PostmanApp extends JFrame {
 		// 6. Send Request
 		sendButton.setEnabled(false);
 		nodeConfigPanel.getResponseArea().setText("Sending request...");
+		nodeConfigPanel.setResponseBodySyntax(SyntaxConstants.SYNTAX_STYLE_NONE);
 
 		String finalBody = bodyToSend;
 		Map<String, String> finalHeaders = headers;
@@ -786,25 +789,35 @@ public class PostmanApp extends JFrame {
 
 					// Response Body (with JSON formatting if applicable)
 					String responseBody;
+					String syntaxStyle = SyntaxConstants.SYNTAX_STYLE_NONE;
+
+					// Determine syntax from Content-Type header
+					String contentType = response.headers().firstValue("Content-Type").orElse("").toLowerCase();
+					if (contentType.contains("json")) {
+						syntaxStyle = SyntaxConstants.SYNTAX_STYLE_JSON;
+					} else if (contentType.contains("xml")) {
+						syntaxStyle = SyntaxConstants.SYNTAX_STYLE_XML;
+					} else if (contentType.contains("html")) {
+						syntaxStyle = SyntaxConstants.SYNTAX_STYLE_HTML;
+					}
+
 					try {
 						Object json = objectMapper.readValue(response.body(), Object.class);
 						responseBody = objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(json);
+						// If parsing succeeded, it is JSON
+						syntaxStyle = SyntaxConstants.SYNTAX_STYLE_JSON;
 					} catch (Exception e) {
 						responseBody = response.body();
 					}
 					nodeConfigPanel.setResponseBody(responseBody);
+					nodeConfigPanel.setResponseBodySyntax(syntaxStyle);
 
-					// Also set the old responseArea for backward compatibility
-					StringBuilder sb = new StringBuilder();
-					sb.append("Status: ").append(response.statusCode()).append("\n");
-					sb.append("Headers:\n");
-					response.headers().map().forEach((k, v) -> sb.append(k).append(": ").append(v).append("\n"));
-					sb.append("\nBody:\n");
-					sb.append(responseBody);
-					nodeConfigPanel.getResponseArea().setText(sb.toString());
+				// Also set the old responseArea (now just shows response body since we have separate tabs)
+				nodeConfigPanel.getResponseArea().setText(responseBody);
 				} catch (Exception e) {
 					String errorMsg = "Error: " + e.getMessage();
 					nodeConfigPanel.setResponseBody(errorMsg);
+					nodeConfigPanel.setResponseBodySyntax(SyntaxConstants.SYNTAX_STYLE_NONE);
 					nodeConfigPanel.getResponseArea().setText(errorMsg);
 					e.printStackTrace();
 				} finally {

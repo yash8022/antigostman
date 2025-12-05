@@ -27,7 +27,10 @@ public class HttpClientService {
             headers.forEach(builder::header);
         }
 
-        switch (method.toUpperCase()) {
+        // Default to GET if method is null
+        String effectiveMethod = (method != null) ? method : "GET";
+        
+        switch (effectiveMethod.toUpperCase()) {
             case "GET":
                 builder.GET();
                 break;
@@ -53,7 +56,7 @@ public class HttpClientService {
                 }
                 break;
             default:
-                throw new IllegalArgumentException("Unsupported method: " + method);
+                throw new IllegalArgumentException("Unsupported method: " + effectiveMethod);
         }
 
         return httpClient.send(builder.build(), HttpResponse.BodyHandlers.ofString());

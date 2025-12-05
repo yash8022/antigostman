@@ -9,11 +9,13 @@ public class PostmanRequest extends PostmanNode {
 	public PostmanRequest() {
 		super();
 		setAllowsChildren(false);
+		this.method = "GET"; // Set default here to avoid listener timing issues
 	}
 
 	public PostmanRequest(String name) {
 		super(name);
 		setAllowsChildren(false);
+		this.method = "GET"; // Set default here to avoid listener timing issues
 	}
 
 	public String getMethod() {
