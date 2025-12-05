@@ -712,17 +712,13 @@ public class PostmanApp extends JFrame {
 				}
 			}
 			bodyToSend = encoded.toString();
-			if (!headers.containsKey("Content-Type")) {
-				headers.put("Content-Type", "application/x-www-form-urlencoded");
-			}
+			headers.put("Content-Type", "application/x-www-form-urlencoded");
 		} else if ("JSON".equalsIgnoreCase(bodyType)) {
-			if (!headers.containsKey("Content-Type")) {
-				headers.put("Content-Type", "application/json");
-			}
+			headers.put("Content-Type", "application/json");
 		} else if ("XML".equalsIgnoreCase(bodyType)) {
-			if (!headers.containsKey("Content-Type")) {
-				headers.put("Content-Type", "application/xml");
-			}
+			headers.put("Content-Type", "application/xml");
+		} else if ("TEXT".equalsIgnoreCase(bodyType)) {
+			headers.put("Content-Type", "text/plain");
 		}
 
 		// 6. Send Request
@@ -741,6 +737,15 @@ public class PostmanApp extends JFrame {
 
 			@Override
 			protected void done() {
+				// Display Request in execution tabs (always, even on error)
+				// Request Headers
+				StringBuilder reqHeadersSb = new StringBuilder();
+				finalHeaders.forEach((k, v) -> reqHeadersSb.append(k).append(": ").append(v).append("\n"));
+				nodeConfigPanel.setRequestHeaders(reqHeadersSb.toString());
+
+				// Request Body
+				nodeConfigPanel.setRequestBody(finalBody != null ? finalBody : "");
+
 				try {
 					HttpResponse<String> response = get();
 
@@ -756,15 +761,7 @@ public class PostmanApp extends JFrame {
 						}
 					}
 
-					// 8. Display Request and Response in execution tabs
-
-					// Request Headers
-					StringBuilder reqHeadersSb = new StringBuilder();
-					finalHeaders.forEach((k, v) -> reqHeadersSb.append(k).append(": ").append(v).append("\n"));
-					nodeConfigPanel.setRequestHeaders(reqHeadersSb.toString());
-
-					// Request Body
-					nodeConfigPanel.setRequestBody(finalBody != null ? finalBody : "");
+					// 8. Display Response in execution tabs
 
 					// Response Headers
 					StringBuilder respHeadersSb = new StringBuilder();

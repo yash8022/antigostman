@@ -23,8 +23,22 @@ public class HttpClientService {
                 .uri(URI.create(url))
                 .timeout(Duration.ofMillis(timeoutMillis));
 
+        // Determine HTTP version (Default to HTTP/1.1 for compatibility)
+        HttpClient.Version version = HttpClient.Version.HTTP_1_1;
+        if (headers != null && headers.containsKey("X-Http-Version")) {
+            String v = headers.get("X-Http-Version");
+            if ("2".equals(v) || "2.0".equals(v)) {
+                version = HttpClient.Version.HTTP_2;
+            }
+        }
+        builder.version(version);
+
         if (headers != null) {
-            headers.forEach(builder::header);
+            headers.forEach((k, v) -> {
+                if (!"X-Http-Version".equalsIgnoreCase(k)) {
+                    builder.header(k, v);
+                }
+            });
         }
 
         // Default to GET if method is null
