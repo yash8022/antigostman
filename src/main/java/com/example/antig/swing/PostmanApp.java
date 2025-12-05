@@ -105,7 +105,7 @@ public class PostmanApp extends JFrame {
 
 		// Load last opened project
 		SwingUtilities.invokeLater(this::restoreWorkspace);
-	
+
 		// Add window listener to save before closing
 		addWindowListener(new java.awt.event.WindowAdapter() {
 			@Override
@@ -185,14 +185,14 @@ public class PostmanApp extends JFrame {
 		projectTree.addTreeExpansionListener(new javax.swing.event.TreeExpansionListener() {
 			@Override
 			public void treeExpanded(javax.swing.event.TreeExpansionEvent event) {
-				saveTreeExpansionState();
-				autoSaveProject();
+//				saveTreeExpansionState();
+//				autoSaveProject();
 			}
 
 			@Override
 			public void treeCollapsed(javax.swing.event.TreeExpansionEvent event) {
-				saveTreeExpansionState();
-				autoSaveProject();
+//				saveTreeExpansionState();
+//				autoSaveProject();
 			}
 		});
 
@@ -275,7 +275,9 @@ public class PostmanApp extends JFrame {
 		bodyTypeComboBox = new JComboBox<>(bodyTypes);
 		bodyTypeComboBox.setPreferredSize(new Dimension(120, 30));
 		bodyTypeComboBox.addActionListener(e -> {
-			if (isLoadingNode) return; // Skip during load
+			if (isLoadingNode) {
+				return; // Skip during load
+			}
 			if (currentNode instanceof PostmanRequest) {
 				PostmanRequest req = (PostmanRequest) currentNode;
 				String newType = (String) bodyTypeComboBox.getSelectedItem();
@@ -339,12 +341,13 @@ public class PostmanApp extends JFrame {
 		}
 
 		System.out.println("=== onNodeSelected ===");
-		System.out.println("Switching FROM: " + (currentNode != null ? currentNode.getName() + " (" + currentNode.getClass().getSimpleName() + ")" : "null"));
+		System.out.println("Switching FROM: "
+				+ (currentNode != null ? currentNode.getName() + " (" + currentNode.getClass().getSimpleName() + ")" : "null"));
 		System.out.println("Switching TO: " + node.getName() + " (" + node.getClass().getSimpleName() + ")");
 
 		// Save current state before switching
-		saveCurrentNodeState();
-		autoSaveProject(); // Autosave when switching nodes
+//		saveCurrentNodeState();
+//		autoSaveProject(); // Autosave when switching nodes
 
 		currentNode = node;
 
@@ -361,7 +364,7 @@ public class PostmanApp extends JFrame {
 				System.out.println("  URL: " + req.getUrl());
 				System.out.println("  Method: " + req.getMethod());
 				System.out.println("  BodyType: " + req.getBodyType());
-				
+
 				urlField.setText(req.getUrl());
 				methodComboBox.setSelectedItem(req.getMethod());
 				bodyTypeComboBox.setSelectedItem(req.getBodyType() != null ? req.getBodyType() : "TEXT");
@@ -405,7 +408,8 @@ public class PostmanApp extends JFrame {
 			req.setUrl(urlField.getText());
 			req.setMethod((String) methodComboBox.getSelectedItem());
 			req.setBodyType((String) bodyTypeComboBox.getSelectedItem());
-			System.out.println("  Saved to model - URL: " + req.getUrl() + ", Method: " + req.getMethod() + ", BodyType: " + req.getBodyType());
+			System.out.println("  Saved to model - URL: " + req.getUrl() + ", Method: " + req.getMethod() + ", BodyType: "
+					+ req.getBodyType());
 		}
 	}
 
@@ -765,43 +769,43 @@ public class PostmanApp extends JFrame {
 					}
 
 					// 8. Display Request and Response in execution tabs
-				
-				// Request Headers
-				StringBuilder reqHeadersSb = new StringBuilder();
-				finalHeaders.forEach((k, v) -> reqHeadersSb.append(k).append(": ").append(v).append("\n"));
-				nodeConfigPanel.setRequestHeaders(reqHeadersSb.toString());
-				
-				// Request Body
-				nodeConfigPanel.setRequestBody(finalBody != null ? finalBody : "");
-				
-				// Response Headers
-				StringBuilder respHeadersSb = new StringBuilder();
-				respHeadersSb.append("Status: ").append(response.statusCode()).append("\n\n");
-				response.headers().map().forEach((k, v) -> respHeadersSb.append(k).append(": ").append(v).append("\n"));
-				nodeConfigPanel.setResponseHeaders(respHeadersSb.toString());
-				
-				// Response Body (with JSON formatting if applicable)
-				String responseBody;
-				try {
-					Object json = objectMapper.readValue(response.body(), Object.class);
-					responseBody = objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(json);
+
+					// Request Headers
+					StringBuilder reqHeadersSb = new StringBuilder();
+					finalHeaders.forEach((k, v) -> reqHeadersSb.append(k).append(": ").append(v).append("\n"));
+					nodeConfigPanel.setRequestHeaders(reqHeadersSb.toString());
+
+					// Request Body
+					nodeConfigPanel.setRequestBody(finalBody != null ? finalBody : "");
+
+					// Response Headers
+					StringBuilder respHeadersSb = new StringBuilder();
+					respHeadersSb.append("Status: ").append(response.statusCode()).append("\n\n");
+					response.headers().map().forEach((k, v) -> respHeadersSb.append(k).append(": ").append(v).append("\n"));
+					nodeConfigPanel.setResponseHeaders(respHeadersSb.toString());
+
+					// Response Body (with JSON formatting if applicable)
+					String responseBody;
+					try {
+						Object json = objectMapper.readValue(response.body(), Object.class);
+						responseBody = objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(json);
+					} catch (Exception e) {
+						responseBody = response.body();
+					}
+					nodeConfigPanel.setResponseBody(responseBody);
+
+					// Also set the old responseArea for backward compatibility
+					StringBuilder sb = new StringBuilder();
+					sb.append("Status: ").append(response.statusCode()).append("\n");
+					sb.append("Headers:\n");
+					response.headers().map().forEach((k, v) -> sb.append(k).append(": ").append(v).append("\n"));
+					sb.append("\nBody:\n");
+					sb.append(responseBody);
+					nodeConfigPanel.getResponseArea().setText(sb.toString());
 				} catch (Exception e) {
-					responseBody = response.body();
-				}
-				nodeConfigPanel.setResponseBody(responseBody);
-				
-				// Also set the old responseArea for backward compatibility
-				StringBuilder sb = new StringBuilder();
-				sb.append("Status: ").append(response.statusCode()).append("\n");
-				sb.append("Headers:\n");
-				response.headers().map().forEach((k, v) -> sb.append(k).append(": ").append(v).append("\n"));
-				sb.append("\nBody:\n");
-				sb.append(responseBody);
-				nodeConfigPanel.getResponseArea().setText(sb.toString());
-			} catch (Exception e) {
-				String errorMsg = "Error: " + e.getMessage();
-				nodeConfigPanel.setResponseBody(errorMsg);
-				nodeConfigPanel.getResponseArea().setText(errorMsg);
+					String errorMsg = "Error: " + e.getMessage();
+					nodeConfigPanel.setResponseBody(errorMsg);
+					nodeConfigPanel.getResponseArea().setText(errorMsg);
 					e.printStackTrace();
 				} finally {
 					sendButton.setEnabled(true);
@@ -1131,25 +1135,26 @@ public class PostmanApp extends JFrame {
 	private void saveAllProjects() {
 		System.out.println("=== saveAllProjects called ===");
 		System.out.println("Current node: " + (currentNode != null ? currentNode.getName() : "null"));
-		
+
 		// Save current node state first
 		saveCurrentNodeState();
-		
+
 		System.out.println("=== Saving all projects ===");
 		if (currentNode instanceof PostmanRequest) {
 			PostmanRequest req = (PostmanRequest) currentNode;
-			System.out.println("Current request - URL: " + req.getUrl() + ", Method: " + req.getMethod() + ", BodyType: " + req.getBodyType());
+			System.out.println("Current request - URL: " + req.getUrl() + ", Method: " + req.getMethod() + ", BodyType: "
+					+ req.getBodyType());
 		}
-		
+
 		// Save all open collections
 		for (Map.Entry<PostmanCollection, File> entry : collectionFileMap.entrySet()) {
 			PostmanCollection collection = entry.getKey();
 			File file = entry.getValue();
-			
+
 			// Collect expansion state
 			Set<String> expandedIds = new HashSet<>();
 			collectExpandedNodeIds(collection, expandedIds);
-			
+
 			try {
 				projectService.saveProject(collection, file, expandedIds);
 				System.out.println("Saved " + collection.getName() + " to " + file.getAbsolutePath());

@@ -1,70 +1,70 @@
 package com.example.antig.swing.model;
 
 public class PostmanRequest extends PostmanNode {
-    private String method = "GET";
-    private String url = "";
-    private String body = "";
-    private String params = "";  // Request parameters in properties format
+	private String method = null;
+	private String url = "";
+	private String body = "";
+	private String params = ""; // Request parameters in properties format
 
-    public PostmanRequest() {
-        super();
-        setAllowsChildren(false);
-    }
+	public PostmanRequest() {
+		super();
+		setAllowsChildren(false);
+	}
 
-    public PostmanRequest(String name) {
-        super(name);
-        setAllowsChildren(false);
-    }
+	public PostmanRequest(String name) {
+		super(name);
+		setAllowsChildren(false);
+	}
 
-    public String getMethod() {
-        return method;
-    }
+	public String getMethod() {
+		return method;
+	}
 
-    public void setMethod(String method) {
-        this.method = method;
-    }
+	public void setMethod(String method) {
+		this.method = method;
+	}
 
-    public String getUrl() {
-        return url;
-    }
+	public String getUrl() {
+		return url;
+	}
 
-    public void setUrl(String url) {
-        this.url = url;
-    }
+	public void setUrl(String url) {
+		this.url = url;
+	}
 
-    public String getBody() {
-        return body;
-    }
+	public String getBody() {
+		return body;
+	}
 
-    public void setBody(String body) {
-        this.body = body;
-    }
+	public void setBody(String body) {
+		this.body = body;
+	}
 
-    public String getParams() {
-        return params;
-    }
+	public String getParams() {
+		return params;
+	}
 
-    public void setParams(String params) {
-        this.params = params;
-    }
+	public void setParams(String params) {
+		this.params = params;
+	}
 
-    private String bodyType = "TEXT";
+	private String bodyType = "TEXT";
 
-    public String getBodyType() {
-        return bodyType;
-    }
+	public String getBodyType() {
+		return bodyType;
+	}
 
-    public void setBodyType(String bodyType) {
-        this.bodyType = bodyType;
-    }
+	public void setBodyType(String bodyType) {
+		this.bodyType = bodyType;
+	}
 
-    private int executionTabIndex = 0;
+	private int executionTabIndex = 0;
 
-    public int getExecutionTabIndex() {
-        return executionTabIndex;
-    }
+	public int getExecutionTabIndex() {
+		return executionTabIndex;
+	}
 
-    public void setExecutionTabIndex(int executionTabIndex) {
-        this.executionTabIndex = executionTabIndex;
-    }
+	public void setExecutionTabIndex(int executionTabIndex) {
+		this.executionTabIndex = executionTabIndex;
+	}
 }
