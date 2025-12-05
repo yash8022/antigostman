@@ -18,10 +18,10 @@ public class HttpClientService {
                 .build();
     }
 
-    public HttpResponse<String> sendRequest(String url, String method, String body, java.util.Map<String, String> headers) throws Exception {
+    public HttpResponse<String> sendRequest(String url, String method, String body, java.util.Map<String, String> headers, long timeoutMillis) throws Exception {
         HttpRequest.Builder builder = HttpRequest.newBuilder()
                 .uri(URI.create(url))
-                .timeout(Duration.ofMinutes(1));
+                .timeout(Duration.ofMillis(timeoutMillis));
 
         if (headers != null) {
             headers.forEach(builder::header);

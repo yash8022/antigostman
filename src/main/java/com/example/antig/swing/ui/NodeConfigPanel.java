@@ -327,51 +327,20 @@ public class NodeConfigPanel extends JPanel {
 		// Tab 1: Request Headers
 		requestHeadersArea = createReadOnlySyntaxTextArea();
 		requestHeadersArea.setSyntaxEditingStyle(SyntaxConstants.SYNTAX_STYLE_PROPERTIES_FILE);
-		executionTabbedPane.addTab("Request Headers", new RTextScrollPane(requestHeadersArea));
+		executionTabbedPane.addTab("Request Headers", createTabWithToolbar(requestHeadersArea, null));
 
 		// Tab 2: Request Body
 		requestBodyArea = createReadOnlySyntaxTextArea();
-		executionTabbedPane.addTab("Request Body", new RTextScrollPane(requestBodyArea));
+		executionTabbedPane.addTab("Request Body", createTabWithToolbar(requestBodyArea, null));
 
 		// Tab 3: Response Headers
 		responseHeadersArea = createReadOnlySyntaxTextArea();
 		responseHeadersArea.setSyntaxEditingStyle(SyntaxConstants.SYNTAX_STYLE_PROPERTIES_FILE);
-		executionTabbedPane.addTab("Response Headers", new RTextScrollPane(responseHeadersArea));
+		executionTabbedPane.addTab("Response Headers", createTabWithToolbar(responseHeadersArea, null));
 
 		// Tab 4: Response Body
 		responseBodyArea = createReadOnlySyntaxTextArea();
-		
-		JPanel responseBodyPanel = new JPanel(new BorderLayout());
-		JToolBar responseToolbar = new JToolBar();
-		responseToolbar.setFloatable(false);
-		
-		JButton saveButton = new JButton("Save");
-		JButton copyButton = new JButton("Copy to Clipboard");
-		JButton clearButton = new JButton("Clear");
-		JCheckBox openAfterSave = new JCheckBox("Open after save");
-		
-		saveButton.addActionListener(e -> saveResponseBody(openAfterSave.isSelected()));
-		
-		copyButton.addActionListener(e -> {
-			responseBodyArea.selectAll();
-			responseBodyArea.copy();
-			responseBodyArea.setCaretPosition(0);
-		});
-		
-		clearButton.addActionListener(e -> {
-			responseBodyArea.setText("");
-			setResponseBodySyntax(SyntaxConstants.SYNTAX_STYLE_NONE);
-		});
-		
-		responseToolbar.add(copyButton);
-		responseToolbar.add(clearButton);
-		responseToolbar.add(saveButton);
-		responseToolbar.add(openAfterSave);
-		
-		responseBodyPanel.add(responseToolbar, BorderLayout.NORTH);
-		responseBodyPanel.add(new RTextScrollPane(responseBodyArea), BorderLayout.CENTER);
-		
-		executionTabbedPane.addTab("Response Body", responseBodyPanel);
+		executionTabbedPane.addTab("Response Body", createTabWithToolbar(responseBodyArea, () -> setResponseBodySyntax(SyntaxConstants.SYNTAX_STYLE_NONE)));
 
 		// Keep reference to old responseArea for backward compatibility
 		responseArea = responseBodyArea;
@@ -657,7 +626,43 @@ public class NodeConfigPanel extends JPanel {
 		}
 	}
 
-	private void saveResponseBody(boolean openAfterSave) {
+	private JPanel createTabWithToolbar(RSyntaxTextArea textArea, Runnable onClear) {
+		JPanel panel = new JPanel(new BorderLayout());
+		JToolBar toolbar = new JToolBar();
+		toolbar.setFloatable(false);
+		
+		JButton saveButton = new JButton("Save");
+		JButton copyButton = new JButton("Copy to Clipboard");
+		JButton clearButton = new JButton("Clear");
+		JCheckBox openAfterSave = new JCheckBox("Open after save");
+		
+		saveButton.addActionListener(e -> saveContent(textArea, openAfterSave.isSelected()));
+		
+		copyButton.addActionListener(e -> {
+			textArea.selectAll();
+			textArea.copy();
+			textArea.setCaretPosition(0);
+		});
+		
+		clearButton.addActionListener(e -> {
+			textArea.setText("");
+			if (onClear != null) {
+				onClear.run();
+			}
+		});
+		
+		toolbar.add(copyButton);
+		toolbar.add(clearButton);
+		toolbar.add(saveButton);
+		toolbar.add(openAfterSave);
+		
+		panel.add(toolbar, BorderLayout.NORTH);
+		panel.add(new RTextScrollPane(textArea), BorderLayout.CENTER);
+		
+		return panel;
+	}
+
+	private void saveContent(RSyntaxTextArea textArea, boolean openAfterSave) {
 		JFileChooser fileChooser = new JFileChooser();
 		if (recentProjectsManager != null) {
 			String lastDir = recentProjectsManager.getLastSaveDirectory();
@@ -670,7 +675,7 @@ public class NodeConfigPanel extends JPanel {
 			File file = fileChooser.getSelectedFile();
 			try {
 				// Save file
-				java.nio.file.Files.writeString(file.toPath(), responseBodyArea.getText());
+				java.nio.file.Files.writeString(file.toPath(), textArea.getText());
 
 				// Save directory
 				if (recentProjectsManager != null) {

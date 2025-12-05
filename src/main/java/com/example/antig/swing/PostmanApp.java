@@ -37,6 +37,8 @@ import javax.swing.JSplitPane;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.JTree;
+import javax.swing.JSpinner;
+import javax.swing.SpinnerNumberModel;
 import javax.swing.SwingUtilities;
 import javax.swing.SwingWorker;
 import javax.swing.UIManager;
@@ -78,7 +80,9 @@ public class PostmanApp extends JFrame {
 	private JComboBox<String> methodComboBox;
 	private JComboBox<String> bodyTypeComboBox;
 	private JTextArea requestBodyArea;
+	private JSpinner timeoutSpinner;
 	private JButton sendButton;
+	private JPanel requestToolbar;
 
 	private PostmanNode currentNode;
 	private boolean isLoadingNode = false; // Flag to prevent listeners from firing during load
@@ -232,7 +236,7 @@ public class PostmanApp extends JFrame {
 		JPanel rightPanel = new JPanel(new BorderLayout());
 
 		// Top toolbar for request execution (only visible for requests)
-		JPanel requestToolbar = createRequestToolbar();
+		requestToolbar = createRequestToolbar();
 		rightPanel.add(requestToolbar, BorderLayout.NORTH);
 
 		// Center: Tabbed configuration panel
@@ -321,6 +325,19 @@ public class PostmanApp extends JFrame {
 		sendButton.addActionListener(e -> sendRequest());
 		sendButton.setPreferredSize(new Dimension(80, 30));
 
+		// Timeout spinner
+		timeoutSpinner = new JSpinner(new SpinnerNumberModel(1000, 1, Integer.MAX_VALUE, 100));
+		timeoutSpinner.setToolTipText("Timeout (ms)");
+		timeoutSpinner.setPreferredSize(new Dimension(80, 30));
+		timeoutSpinner.addChangeListener(e -> {
+			if (isLoadingNode) return;
+			if (currentNode instanceof PostmanRequest) {
+				PostmanRequest req = (PostmanRequest) currentNode;
+				req.setTimeout(((Number)timeoutSpinner.getValue()).longValue());
+				autoSaveProject();
+			}
+		});
+
 		JPanel leftPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
 		leftPanel.add(methodComboBox);
 		leftPanel.add(Box.createHorizontalStrut(5));
@@ -328,7 +345,13 @@ public class PostmanApp extends JFrame {
 
 		toolbar.add(leftPanel, BorderLayout.WEST);
 		toolbar.add(urlField, BorderLayout.CENTER);
-		toolbar.add(sendButton, BorderLayout.EAST);
+		
+		JPanel rightPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
+		rightPanel.add(timeoutSpinner);
+		rightPanel.add(Box.createHorizontalStrut(5));
+		rightPanel.add(sendButton);
+		
+		toolbar.add(rightPanel, BorderLayout.EAST);
 
 		// Initially hidden, shown only for requests
 		toolbar.setVisible(false);
@@ -369,15 +392,11 @@ public class PostmanApp extends JFrame {
 
 				urlField.setText(req.getUrl());
 				methodComboBox.setSelectedItem(req.getMethod());
-				bodyTypeComboBox.setSelectedItem(req.getBodyType() != null ? req.getBodyType() : "TEXT");
-
-				// Show request toolbar
-				Component[] components = nodeConfigPanel.getParent().getComponents();
-				for (Component comp : components) {
-					if (comp instanceof JPanel && comp != nodeConfigPanel) {
-						comp.setVisible(true);
-					}
-				}
+			bodyTypeComboBox.setSelectedItem(req.getBodyType() != null ? req.getBodyType() : "TEXT");
+			timeoutSpinner.setValue(req.getTimeout());
+			
+			// Show request toolbar
+			requestToolbar.setVisible(true);
 			} else {
 				// Hide request toolbar for collections/folders
 				Component[] components = nodeConfigPanel.getParent().getComponents();
@@ -410,6 +429,7 @@ public class PostmanApp extends JFrame {
 			req.setUrl(urlField.getText());
 			req.setMethod((String) methodComboBox.getSelectedItem());
 			req.setBodyType((String) bodyTypeComboBox.getSelectedItem());
+			req.setTimeout(((Number)timeoutSpinner.getValue()).longValue());
 			System.out.println("  Saved to model - URL: " + req.getUrl() + ", Method: " + req.getMethod() + ", BodyType: "
 					+ req.getBodyType());
 		}
@@ -752,7 +772,7 @@ public class PostmanApp extends JFrame {
 		SwingWorker<HttpResponse<String>, Void> worker = new SwingWorker<>() {
 			@Override
 			protected HttpResponse<String> doInBackground() throws Exception {
-				return httpClientService.sendRequest(req.getUrl(), req.getMethod(), finalBody, finalHeaders);
+				return httpClientService.sendRequest(req.getUrl(), req.getMethod(), finalBody, finalHeaders, req.getTimeout());
 			}
 
 			@Override

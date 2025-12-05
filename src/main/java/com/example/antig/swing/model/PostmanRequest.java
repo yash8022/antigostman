@@ -69,4 +69,14 @@ public class PostmanRequest extends PostmanNode {
 	public void setExecutionTabIndex(int executionTabIndex) {
 		this.executionTabIndex = executionTabIndex;
 	}
+
+	private long timeout = 1000;
+
+	public long getTimeout() {
+		return timeout;
+	}
+
+	public void setTimeout(long timeout) {
+		this.timeout = timeout;
+	}
 }
