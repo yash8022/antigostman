@@ -289,8 +289,12 @@ public class PostmanApp extends JFrame {
 		verticalSplitPane.setResizeWeight(0.8); // 80% for main content
 		verticalSplitPane.setTopComponent(mainSplitPane);
 		verticalSplitPane.setBottomComponent(consoleTabbedPane);
+		verticalSplitPane.setResizeWeight(0.75); // 75% for main content
 
 		add(verticalSplitPane, BorderLayout.CENTER);
+		
+		// Set initial divider location
+		SwingUtilities.invokeLater(() -> verticalSplitPane.setDividerLocation(0.75));
 	}
 
 	private JPanel createRequestToolbar() {
@@ -1453,7 +1457,7 @@ public class PostmanApp extends JFrame {
 		boolean isVisible = consoleTabbedPane.isVisible();
 		consoleTabbedPane.setVisible(!isVisible);
 		if (!isVisible) {
-			verticalSplitPane.setDividerLocation(0.8);
+			verticalSplitPane.setDividerLocation(0.75);
 		}
 	}
 

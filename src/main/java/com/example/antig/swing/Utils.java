@@ -1,6 +1,8 @@
 package com.example.antig.swing;
 
 import java.security.SecureRandom;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Random;
 import java.util.UUID;
 
@@ -10,6 +12,14 @@ public class Utils {
 
 	public String uuid() {
 		return UUID.randomUUID().toString();
+	}
+
+	public String dt(String format) {
+		return DateTimeFormatter.ofPattern(format).format(LocalDateTime.now());
+	}
+
+	public String dt() {
+		return dt("yyMMddHHmmss");
 	}
 
 	public String rnd(String cfg, int length) {
