@@ -33,11 +33,11 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
 import javax.swing.JScrollPane;
+import javax.swing.JSpinner;
 import javax.swing.JSplitPane;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.JTree;
-import javax.swing.JSpinner;
 import javax.swing.SpinnerNumberModel;
 import javax.swing.SwingUtilities;
 import javax.swing.SwingWorker;
@@ -45,6 +45,8 @@ import javax.swing.UIManager;
 import javax.swing.tree.DefaultTreeModel;
 import javax.swing.tree.TreeNode;
 import javax.swing.tree.TreePath;
+
+import org.fife.ui.rsyntaxtextarea.SyntaxConstants;
 
 import com.example.antig.swing.model.PostmanCollection;
 import com.example.antig.swing.model.PostmanFolder;
@@ -56,12 +58,13 @@ import com.example.antig.swing.ui.NodeConfigPanel;
 import com.example.antig.swing.ui.PostmanTreeCellRenderer;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.socle2.utils.PropertiesUtils;
-import org.fife.ui.rsyntaxtextarea.SyntaxConstants;
 
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class PostmanApp extends JFrame {
+
+
 
 	private final HttpClientService httpClientService;
 	private final ProjectService projectService;
@@ -237,7 +240,8 @@ public class PostmanApp extends JFrame {
 
 		// Center: Tabbed configuration panel
 		nodeConfigPanel = new NodeConfigPanel();
-		// nodeConfigPanel.setAutoSaveCallback(this::autoSaveProject); // Autosave disabled
+		// nodeConfigPanel.setAutoSaveCallback(this::autoSaveProject); // Autosave
+		// disabled
 		nodeConfigPanel.setRecentProjectsManager(recentProjectsManager);
 		rightPanel.add(nodeConfigPanel, BorderLayout.CENTER);
 
@@ -330,7 +334,7 @@ public class PostmanApp extends JFrame {
 			}
 			if (currentNode instanceof PostmanRequest) {
 				PostmanRequest req = (PostmanRequest) currentNode;
-				req.setTimeout(((Number)timeoutSpinner.getValue()).longValue());
+				req.setTimeout(((Number) timeoutSpinner.getValue()).longValue());
 				// autoSaveProject();
 			}
 		});
@@ -363,12 +367,12 @@ public class PostmanApp extends JFrame {
 
 		toolbar.add(leftPanel, BorderLayout.WEST);
 		toolbar.add(urlField, BorderLayout.CENTER);
-		
+
 		JPanel rightPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
 		rightPanel.add(timeoutSpinner);
 		rightPanel.add(Box.createHorizontalStrut(5));
 		rightPanel.add(sendButton);
-		
+
 		toolbar.add(rightPanel, BorderLayout.EAST);
 
 		// Initially hidden, shown only for requests
@@ -413,9 +417,9 @@ public class PostmanApp extends JFrame {
 				bodyTypeComboBox.setSelectedItem(req.getBodyType() != null ? req.getBodyType() : "TEXT");
 				httpVersionComboBox.setSelectedItem(req.getHttpVersion() != null ? req.getHttpVersion() : "HTTP/1.1");
 				timeoutSpinner.setValue(req.getTimeout());
-			
-			// Show request toolbar
-			requestToolbar.setVisible(true);
+
+				// Show request toolbar
+				requestToolbar.setVisible(true);
 			} else {
 				// Hide request toolbar for collections/folders
 				Component[] components = nodeConfigPanel.getParent().getComponents();
@@ -449,7 +453,7 @@ public class PostmanApp extends JFrame {
 			req.setMethod((String) methodComboBox.getSelectedItem());
 			req.setBodyType((String) bodyTypeComboBox.getSelectedItem());
 			req.setHttpVersion((String) httpVersionComboBox.getSelectedItem());
-			req.setTimeout(((Number)timeoutSpinner.getValue()).longValue());
+			req.setTimeout(((Number) timeoutSpinner.getValue()).longValue());
 			System.out.println("  Saved to model - URL: " + req.getUrl() + ", Method: " + req.getMethod() + ", BodyType: "
 					+ req.getBodyType());
 		}
@@ -639,7 +643,19 @@ public class PostmanApp extends JFrame {
 		Map<String, String> parentEnvMap = parent == null ? Map.of() : createEnv((PostmanNode) parent);
 
 		TreeMap<String, String> map = new TreeMap<>();
+		
+		// 1. Global Variables (Base) - Only if root
+		if (node instanceof PostmanCollection && node.getParent() == null) {
+			Map<String, String> globals = ((PostmanCollection) node).getGlobalVariables();
+			if (globals != null) {
+				map.putAll(globals);
+			}
+		}
+
+		// 2. Parent Environment (Inherited)
 		map.putAll(parentEnvMap);
+		
+		// 3. Node Environment (Specific)
 		map.putAll(node.getEnvironment());
 
 		Properties env = new Properties();
@@ -757,7 +773,8 @@ public class PostmanApp extends JFrame {
 		SwingWorker<HttpResponse<String>, Void> worker = new SwingWorker<>() {
 			@Override
 			protected HttpResponse<String> doInBackground() throws Exception {
-				return httpClientService.sendRequest(req.getUrl(), req.getMethod(), finalBody, finalHeaders, req.getTimeout(), req.getHttpVersion());
+				return httpClientService.sendRequest(req.getUrl(), req.getMethod(), finalBody, finalHeaders, req.getTimeout(),
+						req.getHttpVersion());
 			}
 
 			@Override
@@ -819,8 +836,9 @@ public class PostmanApp extends JFrame {
 					nodeConfigPanel.setResponseBody(responseBody);
 					nodeConfigPanel.setResponseBodySyntax(syntaxStyle);
 
-				// Also set the old responseArea (now just shows response body since we have separate tabs)
-				nodeConfigPanel.getResponseArea().setText(responseBody);
+					// Also set the old responseArea (now just shows response body since we have
+					// separate tabs)
+					nodeConfigPanel.getResponseArea().setText(responseBody);
 				} catch (Exception e) {
 					String errorMsg = "Error: " + e.getMessage();
 					nodeConfigPanel.setResponseBody(errorMsg);
@@ -950,16 +968,16 @@ public class PostmanApp extends JFrame {
 
 		try {
 			saveCurrentNodeState();
-			
+
 			// Save last selected node ID
 			if (currentNode != null) {
 				rootCollection.setLastSelectedNodeId(currentNode.getId());
 			}
-			
+
 			// Collect expansion state
 			Set<String> expandedIds = new HashSet<>();
 			collectExpandedNodeIds(rootCollection, expandedIds);
-			
+
 			projectService.saveProject(rootCollection, currentProjectFile, expandedIds);
 
 			updateOpenProjectsList();
@@ -1029,7 +1047,7 @@ public class PostmanApp extends JFrame {
 				}
 			}
 		}
-		
+
 		// Restore last selected node
 		String lastSelectedId = rootCollection.getLastSelectedNodeId();
 		if (lastSelectedId != null) {
@@ -1154,7 +1172,8 @@ public class PostmanApp extends JFrame {
 
 		try {
 			// Capture expansion state
-			java.util.Enumeration<TreePath> expandedPaths = projectTree.getExpandedDescendants(new TreePath(rootCollection.getPath()));
+			java.util.Enumeration<TreePath> expandedPaths = projectTree
+					.getExpandedDescendants(new TreePath(rootCollection.getPath()));
 			java.util.List<TreePath> pathsToRestore = new java.util.ArrayList<>();
 			if (expandedPaths != null) {
 				while (expandedPaths.hasMoreElements()) {

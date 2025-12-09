@@ -6,6 +6,7 @@ import java.util.List;
 public class PostmanCollection extends PostmanNode {
     private List<PostmanNode> children = new ArrayList<>();
     private String lastSelectedNodeId;
+    private java.util.Map<String, String> globalVariables = new java.util.HashMap<>();
 
     public PostmanCollection() {
         super();
@@ -50,5 +51,13 @@ public class PostmanCollection extends PostmanNode {
 
     public void setLastSelectedNodeId(String lastSelectedNodeId) {
         this.lastSelectedNodeId = lastSelectedNodeId;
+    }
+
+    public java.util.Map<String, String> getGlobalVariables() {
+        return globalVariables;
+    }
+
+    public void setGlobalVariables(java.util.Map<String, String> globalVariables) {
+        this.globalVariables = globalVariables;
     }
 }

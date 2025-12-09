@@ -56,6 +56,7 @@ public class NodeConfigPanel extends JPanel {
 	private RSyntaxTextArea headersArea;
 	private RSyntaxTextArea prescriptArea;
 	private RSyntaxTextArea postscriptArea;
+	private RSyntaxTextArea globalVarsArea; // For root node only
 
 	// Request-only tabs
 	private RSyntaxTextArea bodyArea;
@@ -69,6 +70,7 @@ public class NodeConfigPanel extends JPanel {
 
 	private PostmanNode currentNode;
 	private RecentProjectsManager recentProjectsManager;
+	private boolean isLoading = false;
 
 	public void setRecentProjectsManager(RecentProjectsManager recentProjectsManager) {
 		this.recentProjectsManager = recentProjectsManager;
@@ -99,6 +101,9 @@ public class NodeConfigPanel extends JPanel {
 		// Tab 4: Postscript
 		postscriptArea = createCodeEditor();
 		tabbedPane.addTab("Postscript", new RTextScrollPane(postscriptArea));
+
+		// Tab 6: Global Variables (initially hidden, added dynamically)
+		globalVarsArea = createPropertiesEditor();
 
 		// Body Editor (initialized before execution panel so it can be added there)
 		bodyArea = createBodyEditor();
@@ -152,6 +157,9 @@ public class NodeConfigPanel extends JPanel {
 		caretMap.put("headers", headersArea.getCaretPosition());
 		caretMap.put("prescript", prescriptArea.getCaretPosition());
 		caretMap.put("postscript", postscriptArea.getCaretPosition());
+		if (globalVarsArea != null && globalVarsArea.isShowing()) {
+			caretMap.put("globalVars", globalVarsArea.getCaretPosition());
+		}
 		if (bodyArea != null) {
 			caretMap.put("body", bodyArea.getCaretPosition());
 		}
@@ -179,6 +187,9 @@ public class NodeConfigPanel extends JPanel {
 		safeSet.accept(headersArea, caretMap.getOrDefault("headers", 0));
 		safeSet.accept(prescriptArea, caretMap.getOrDefault("prescript", 0));
 		safeSet.accept(postscriptArea, caretMap.getOrDefault("postscript", 0));
+		if (globalVarsArea != null && globalVarsArea.isShowing()) {
+			safeSet.accept(globalVarsArea, caretMap.getOrDefault("globalVars", 0));
+		}
 		if (bodyArea != null) {
 			safeSet.accept(bodyArea, caretMap.getOrDefault("body", 0));
 		}
@@ -364,7 +375,9 @@ public class NodeConfigPanel extends JPanel {
 	 * Load node data into the UI.
 	 */
 	public void loadNode(PostmanNode node) {
-		this.currentNode = node;
+		this.isLoading = true;
+		try {
+			this.currentNode = node;
 
 		if (node == null) {
 			clearAll();
@@ -383,6 +396,33 @@ public class NodeConfigPanel extends JPanel {
 		// Load scripts
 		prescriptArea.setText(node.getPrescript() != null ? node.getPrescript() : "");
 		postscriptArea.setText(node.getPostscript() != null ? node.getPostscript() : "");
+
+		// Handle Global Variables tab for root node
+		if (node instanceof com.example.antig.swing.model.PostmanCollection && node.getParent() == null) {
+			// It's the root collection
+			// It's the root collection
+			boolean tabExists = false;
+			for (int i = 0; i < tabbedPane.getTabCount(); i++) {
+				if ("Global Variables".equals(tabbedPane.getTitleAt(i))) {
+					tabExists = true;
+					break;
+				}
+			}
+			
+			if (!tabExists) {
+				tabbedPane.addTab("Global Variables", new RTextScrollPane(globalVarsArea));
+			}
+			com.example.antig.swing.model.PostmanCollection col = (com.example.antig.swing.model.PostmanCollection) node;
+			globalVarsArea.setText(mapToProperties(col.getGlobalVariables()));
+		} else {
+			// Remove Global Variables tab if present
+			for (int i = 0; i < tabbedPane.getTabCount(); i++) {
+				if ("Global Variables".equals(tabbedPane.getTitleAt(i))) {
+					tabbedPane.removeTabAt(i);
+					break;
+				}
+			}
+		}
 
 		// Show/hide execution tab based on node type
 		if (node instanceof PostmanRequest) {
@@ -433,13 +473,16 @@ public class NodeConfigPanel extends JPanel {
 		} else {
 			tabbedPane.setSelectedIndex(0);
 		}
+		} finally {
+			this.isLoading = false;
+		}
 	}
 
 	/**
 	 * Save UI data back to the node.
 	 */
 	public void saveNode() {
-		if (currentNode == null) {
+		if (isLoading || currentNode == null) {
 			return;
 		}
 
@@ -457,6 +500,13 @@ public class NodeConfigPanel extends JPanel {
 		// Save scripts
 		currentNode.setPrescript(prescriptArea.getText());
 		currentNode.setPostscript(postscriptArea.getText());
+
+		// Save global variables if root
+		if (currentNode instanceof com.example.antig.swing.model.PostmanCollection && currentNode.getParent() == null) {
+			com.example.antig.swing.model.PostmanCollection col = (com.example.antig.swing.model.PostmanCollection) currentNode;
+			Map<String, String> vars = propertiesToMap(globalVarsArea.getText());
+			col.setGlobalVariables(vars);
+		}
 
 		// Save request-specific data
 		if (currentNode instanceof PostmanRequest) {
@@ -542,8 +592,11 @@ public class NodeConfigPanel extends JPanel {
 	private void clearAll() {
 		environmentArea.setText("");
 		headersArea.setText("");
+		environmentArea.setText("");
+		headersArea.setText("");
 		prescriptArea.setText("");
 		postscriptArea.setText("");
+		globalVarsArea.setText("");
 		bodyArea.setText("");
 		responseArea.setText("");
 	}

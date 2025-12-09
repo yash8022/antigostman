@@ -10,6 +10,9 @@ import java.util.List;
 public class XmlCollection extends XmlNode {
     private List<XmlNode> children = new ArrayList<>();
     private String lastSelectedNodeId;
+    @com.fasterxml.jackson.annotation.JsonProperty("globalVariables")
+    @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.ALWAYS)
+    private java.util.Map<String, String> globalVariables = new java.util.HashMap<>();
 
     public XmlCollection() {
         super();
@@ -33,5 +36,13 @@ public class XmlCollection extends XmlNode {
 
     public void setLastSelectedNodeId(String lastSelectedNodeId) {
         this.lastSelectedNodeId = lastSelectedNodeId;
+    }
+
+    public java.util.Map<String, String> getGlobalVariables() {
+        return globalVariables;
+    }
+
+    public void setGlobalVariables(java.util.Map<String, String> globalVariables) {
+        this.globalVariables = globalVariables;
     }
 }

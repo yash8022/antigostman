@@ -65,7 +65,11 @@ public class NodeConverter {
             xmlCollection.setPrescript(collection.getPrescript() != null ? collection.getPrescript() : "");
             xmlCollection.setPostscript(collection.getPostscript() != null ? collection.getPostscript() : "");
             xmlCollection.setSelectedTabIndex(collection.getSelectedTabIndex());
+            xmlCollection.setSelectedTabIndex(collection.getSelectedTabIndex());
             xmlCollection.setLastSelectedNodeId(collection.getLastSelectedNodeId());
+            if (collection.getGlobalVariables() != null) {
+                xmlCollection.setGlobalVariables(new HashMap<>(collection.getGlobalVariables()));
+            }
             
             // Convert children - use actual tree structure, not the children list
             List<XmlNode> xmlChildren = new ArrayList<>();
@@ -199,7 +203,11 @@ public class NodeConverter {
             collection.setPrescript(xmlCollection.getPrescript() != null ? xmlCollection.getPrescript() : "");
             collection.setPostscript(xmlCollection.getPostscript() != null ? xmlCollection.getPostscript() : "");
             collection.setSelectedTabIndex(xmlCollection.getSelectedTabIndex());
+            collection.setSelectedTabIndex(xmlCollection.getSelectedTabIndex());
             collection.setLastSelectedNodeId(xmlCollection.getLastSelectedNodeId());
+            if (xmlCollection.getGlobalVariables() != null) {
+                collection.setGlobalVariables(new HashMap<>(xmlCollection.getGlobalVariables()));
+            }
             
             // Convert children
             if (xmlCollection.getChildren() != null) {
