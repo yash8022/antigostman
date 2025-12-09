@@ -325,7 +325,9 @@ public class PostmanApp extends JFrame {
 		timeoutSpinner.setToolTipText("Timeout (ms)");
 		timeoutSpinner.setPreferredSize(new Dimension(80, 30));
 		timeoutSpinner.addChangeListener(e -> {
-			if (isLoadingNode) return;
+			if (isLoadingNode) {
+				return;
+			}
 			if (currentNode instanceof PostmanRequest) {
 				PostmanRequest req = (PostmanRequest) currentNode;
 				req.setTimeout(((Number)timeoutSpinner.getValue()).longValue());
@@ -949,6 +951,11 @@ public class PostmanApp extends JFrame {
 		try {
 			saveCurrentNodeState();
 			
+			// Save last selected node ID
+			if (currentNode != null) {
+				rootCollection.setLastSelectedNodeId(currentNode.getId());
+			}
+			
 			// Collect expansion state
 			Set<String> expandedIds = new HashSet<>();
 			collectExpandedNodeIds(rootCollection, expandedIds);
@@ -1012,6 +1019,27 @@ public class PostmanApp extends JFrame {
 		// Scroll to collection
 		TreePath path = new TreePath(rootCollection.getPath());
 		projectTree.scrollPathToVisible(path);
+
+		// Restore expansion state
+		if (expandedIds != null) {
+			for (String id : expandedIds) {
+				PostmanNode node = findNodeById(rootCollection, id);
+				if (node != null) {
+					projectTree.expandPath(new TreePath(node.getPath()));
+				}
+			}
+		}
+		
+		// Restore last selected node
+		String lastSelectedId = rootCollection.getLastSelectedNodeId();
+		if (lastSelectedId != null) {
+			PostmanNode lastSelected = findNodeById(rootCollection, lastSelectedId);
+			if (lastSelected != null) {
+				TreePath path2 = new TreePath(lastSelected.getPath());
+				projectTree.setSelectionPath(path2);
+				projectTree.scrollPathToVisible(path2);
+			}
+		}
 
 		return loadedCollection;
 	}
@@ -1291,6 +1319,19 @@ public class PostmanApp extends JFrame {
 			}
 			return isChildOf(potentialParent, (PostmanNode) node.getParent());
 		}
+	}
+
+	private PostmanNode findNodeById(PostmanNode root, String id) {
+		if (root.getId().equals(id)) {
+			return root;
+		}
+		for (int i = 0; i < root.getChildCount(); i++) {
+			PostmanNode found = findNodeById((PostmanNode) root.getChildAt(i), id);
+			if (found != null) {
+				return found;
+			}
+		}
+		return null;
 	}
 
 	public static void main(String[] args) {

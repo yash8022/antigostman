@@ -316,6 +316,11 @@ public class NodeConfigPanel extends JPanel {
 
 		// Bottom: Execution tabs
 		executionTabbedPane = new JTabbedPane();
+		executionTabbedPane.addChangeListener(e -> {
+			if (currentNode instanceof PostmanRequest) {
+				((PostmanRequest) currentNode).setExecutionTabIndex(executionTabbedPane.getSelectedIndex());
+			}
+		});
 
 		// Tab 1: Request Headers
 		requestHeadersArea = createReadOnlySyntaxTextArea();

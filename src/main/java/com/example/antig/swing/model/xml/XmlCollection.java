@@ -9,6 +9,7 @@ import java.util.List;
  */
 public class XmlCollection extends XmlNode {
     private List<XmlNode> children = new ArrayList<>();
+    private String lastSelectedNodeId;
 
     public XmlCollection() {
         super();
@@ -24,5 +25,13 @@ public class XmlCollection extends XmlNode {
 
     public void setChildren(List<XmlNode> children) {
         this.children = children;
+    }
+
+    public String getLastSelectedNodeId() {
+        return lastSelectedNodeId;
+    }
+
+    public void setLastSelectedNodeId(String lastSelectedNodeId) {
+        this.lastSelectedNodeId = lastSelectedNodeId;
     }
 }

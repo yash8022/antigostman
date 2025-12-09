@@ -5,6 +5,7 @@ import java.util.List;
 
 public class PostmanCollection extends PostmanNode {
     private List<PostmanNode> children = new ArrayList<>();
+    private String lastSelectedNodeId;
 
     public PostmanCollection() {
         super();
@@ -41,5 +42,13 @@ public class PostmanCollection extends PostmanNode {
     public void remove(javax.swing.tree.MutableTreeNode aChild) {
         super.remove(aChild);
         children.remove(aChild);
+    }
+
+    public String getLastSelectedNodeId() {
+        return lastSelectedNodeId;
+    }
+
+    public void setLastSelectedNodeId(String lastSelectedNodeId) {
+        this.lastSelectedNodeId = lastSelectedNodeId;
     }
 }
