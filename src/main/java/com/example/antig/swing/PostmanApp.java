@@ -724,7 +724,7 @@ public class PostmanApp extends JFrame {
 		Collection<String> keys = map.keySet();
 
 		if (parse) {
-			map = parse(map);
+			map = parse(map, new HashMap<>());
 		}
 
 		Map<String, String> results = new TreeMap<>();
@@ -735,24 +735,22 @@ public class PostmanApp extends JFrame {
 		return results;
 	}
 
-	private Map<String, String> parse(Map<String, String> map) {
-		return PropsUtils.parse(map);
+	private Map<String, String> parse(Map<String, String> map, Map<String, ?> variables) {
+		return PropsUtils.parse(map, variables);
 	}
 
-	public String parse(String value, Map<String, String> map) {
+	public String parse(String value, Map<String, ?> variables) {
 
-		Map<String, String> m = new HashMap<>(map);
+		Map<String, String> m = new HashMap<>();
 		String key = UUID.randomUUID().toString();
 		m.put(key, value);
 
-		Map<String, String> m2 = PropsUtils.parse(m);
+		Map<String, String> m2 = parse(m, variables);
 
-		String result = m2.get(key);
-
-		return result;
+		return m2.get(key);
 	}
 
-	private Map<String, String> createHeaders(PostmanNode node, Map<String, String> env, boolean parse) {
+	private Map<String, String> createHeaders(PostmanNode node, Map<String, Object> variables, boolean parse) {
 		if (node == null) {
 			return Map.of();
 		}
@@ -760,7 +758,7 @@ public class PostmanApp extends JFrame {
 		TreeNode parent = node.getParent();
 
 		Map<String, String> parentHeaderMap = parent == null ? Map.of()
-				: createHeaders((PostmanNode) parent, env, false);
+				: createHeaders((PostmanNode) parent, variables, false);
 
 		Map<String, String> map = new TreeMap<>();
 		map.putAll(parentHeaderMap);
@@ -768,10 +766,8 @@ public class PostmanApp extends JFrame {
 
 		Collection<String> keys = map.keySet();
 
-		map.putAll(env);
-
 		if (parse) {
-			map = parse(map);
+			map = parse(map, variables);
 		}
 
 		Map<String, String> results = new TreeMap<>();
@@ -780,6 +776,22 @@ public class PostmanApp extends JFrame {
 		}
 
 		return results;
+	}
+
+	private Map<String, Object> createVariableMap(PostmanRequest req) {
+		Map<String, String> env = createEnv(currentNode, true);
+
+		Map<String, String> globalEnv = ((PostmanNode) rootCollection.getChildAt(0)).getEnvironment();
+
+		env.putAll(globalEnv);
+
+		Map<String, Object> map = new TreeMap<>(env);
+
+		map.put("utils", new Utils());
+		map.put("request", req);
+		map.put("console", new ConsoleLogger());
+
+		return map;
 	}
 
 	private void sendRequest() {
@@ -791,11 +803,8 @@ public class PostmanApp extends JFrame {
 		saveCurrentNodeState(); // Ensure latest edits are saved
 
 		// 1. Initial Environment
-		Map<String, String> env = createEnv(currentNode, true);
 
-		Map<String, String> globalEnv = ((PostmanNode) rootCollection.getChildAt(0)).getEnvironment();
-
-		env.putAll(globalEnv);
+		Map<String, Object> variables = createVariableMap(req);
 
 		// 2. Script Engine Setup
 		ScriptEngine engine = new ScriptEngineManager().getEngineByName("nashorn");
@@ -813,12 +822,9 @@ public class PostmanApp extends JFrame {
 
 		ScriptEngine fEngine = engine;
 
-		// 3. PM Object Setup & Prescript
-		PmContext pm = new PmContext(env, req);
-		fEngine.put("utils", new Utils());
-		fEngine.put("vars", globalEnv);
-		fEngine.put("pm", pm);
-		fEngine.put("console", new ConsoleLogger());
+		for (String k : variables.keySet()) {
+			fEngine.put(k, variables.get(k));
+		}
 
 		String prescript = createPrescript(req);
 
@@ -834,7 +840,7 @@ public class PostmanApp extends JFrame {
 		}
 
 		// 4. Prepare Request (using potentially modified env)
-		Map<String, String> headers = createHeaders(currentNode, env, true);
+		Map<String, String> headers = createHeaders(currentNode, variables, true);
 
 		// 5. Body Formatting & Content-Type
 		String bodyType = req.getBodyType() != null ? req.getBodyType() : "TEXT";
@@ -876,8 +882,8 @@ public class PostmanApp extends JFrame {
 			@Override
 			protected HttpResponse<String> doInBackground() throws Exception {
 
-				String url = parse(req.getUrl(), env);
-				String body = parse(finalBody, env);
+				String url = parse(req.getUrl(), variables);
+				String body = parse(finalBody, variables);
 
 				return httpClientService.sendRequest(url, req.getMethod(), body, finalHeaders, req.getTimeout(),
 						req.getHttpVersion());
@@ -906,7 +912,7 @@ public class PostmanApp extends JFrame {
 
 					// 7. Postscript (Run even if request failed)
 					if (response != null) {
-						pm.response = new PmResponse(response);
+						fEngine.put("response", response);
 					}
 
 					String postscript = createPostscript(req);

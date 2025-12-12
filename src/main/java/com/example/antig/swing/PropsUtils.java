@@ -1,3 +1,4 @@
+
 package com.example.antig.swing;
 
 import java.io.IOException;
@@ -10,66 +11,60 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.apache.commons.configuration2.PropertiesConfiguration;
-import org.mvel2.MVEL;
-import org.mvel2.integration.VariableResolverFactory;
-import org.mvel2.integration.impl.MapVariableResolverFactory;
+import org.apache.velocity.VelocityContext;
+import org.apache.velocity.app.VelocityEngine;
+import org.apache.velocity.runtime.RuntimeConstants;
 
 import lombok.experimental.UtilityClass;
 
 @UtilityClass
 public class PropsUtils {
 
-	public Map<String, String> parse(Map<String, String> map) {
+	/**
+	 * Public entry point taking a map of raw properties (key -> value), resolving
+	 * using Velocity with provided variables (context).
+	 */
+	public Map<String, String> parse(Map<String, String> map, Map<String, ?> variables) {
 		Properties p = new Properties();
 		p.putAll(map);
 
 		try (StringWriter pw = new StringWriter()) {
 			p.store(pw, null);
-			return parse(pw.toString());
+			return parse2(pw.toString(), variables);
 		} catch (IOException ex) {
 			throw new RuntimeException(ex);
 		}
 	}
 
-	public Map<String, String> parse(String content) {
-		return parse(content, new LinkedHashMap<>());
+	/**
+	 * Public entry point taking the textual content of a .properties file.
+	 */
+	public Map<String, String> parse2(String content, Map<String, ?> variables) {
+		return parseInternal(content, variables);
 	}
 
-	public Map<String, String> parse(String content, Map<String, ?> context) {
-		String input;
-		{
-			Pattern p = Pattern.compile("\\$([a-zA-Z_][a-zA-Z0-9_]*)(?![a-zA-Z0-9_.\\(])",
-					Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
-			Matcher m = p.matcher(content);
-
-			StringBuilder sb = new StringBuilder();
-			while (m.find()) {
-				m.appendReplacement(sb, "\\${" + m.group(1) + "}");
-			}
-			m.appendTail(sb);
-			input = sb.toString();
-		}
-		{
-			Pattern p = Pattern.compile("\\{\\{\\s*([a-zA-Z_][a-zA-Z0-9_]*)(?![a-zA-Z0-9_.\\(])\\s*\\}\\}",
-					Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
-			Matcher m = p.matcher(content);
-
-			StringBuilder sb = new StringBuilder();
-			while (m.find()) {
-				m.appendReplacement(sb, "\\${" + m.group(1) + "}");
-			}
-			m.appendTail(sb);
-			input = sb.toString();
-		}
+	/**
+	 * Core parser: normalizes tokens, loads properties, then resolves values via
+	 * Velocity evaluate (multi-pass until convergence).
+	 */
+	private Map<String, String> parseInternal(String content, Map<String, ?> contextVars) {
+		// --- 1) Normalize to support {{ var }} and keep ${var} as expected ---
+		String input = normalizePlaceholders(content);
 
 		try (StringReader r2 = new StringReader(input)) {
 			PropertiesConfiguration config = new PropertiesConfiguration();
 			config.read(r2);
+
 			Map<String, String> map = new LinkedHashMap<>();
 			config.getKeys().forEachRemaining(key -> map.put(key, config.getString(key)));
 
-			if (!context.isEmpty()) {
-				parse(map, context);
+			// --- 2) Resolve with Velocity if we have context vars (and/or self references)
+			// ---
+			if (contextVars != null && !contextVars.isEmpty()) {
+				resolveWithVelocity(map, contextVars);
+			} else {
+				// Still resolve in case values reference other keys (self-references)
+				resolveWithVelocity(map, Map.of());
 			}
 
 			return map;
@@ -78,13 +73,44 @@ public class PropsUtils {
 		}
 	}
 
-	private static void parse(Map<String, String> map, Map<String, ?> context) {
-		Map<String, Object> mvelContext = new LinkedHashMap<>(context);
-		mvelContext.putAll(map);
+	/**
+	 * Convert {{ var }} and {{ var }} to ${var}. Velocity already supports $var and
+	 * ${var}; we only normalize double-curly inputs.
+	 */
+	private String normalizePlaceholders(String content) {
+		String input = content;
 
-		VariableResolverFactory resolverFactory = new MapVariableResolverFactory(mvelContext);
+		// {{ var }} -> ${var}
+		{
+			Pattern p = Pattern.compile("\\{\\{\\s*([a-zA-Z_][a-zA-Z0-9_]*)\\s*\\}\\}",
+					Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
+			Matcher m = p.matcher(input);
 
-		Pattern exprPattern = Pattern.compile("\\$([a-zA-Z_][a-zA-Z0-9_.(),'\"\\s-]*)");
+			StringBuilder sb = new StringBuilder();
+			while (m.find()) {
+				m.appendReplacement(sb, "\\${" + m.group(1) + "}");
+			}
+			m.appendTail(sb);
+			input = sb.toString();
+		}
+
+		// NOTE: Velocity already handles $name and ${name}, so we don't need to rewrite
+		// $name → ${name}.
+		return input;
+	}
+
+	/**
+	 * Evaluate each property value via Velocity, iteratively, because a value may
+	 * depend on other keys that get resolved in earlier passes.
+	 */
+	private void resolveWithVelocity(Map<String, String> map, Map<String, ?> userContext) {
+		VelocityEngine engine = new VelocityEngine();
+
+		// Config: lenient by default; set to true if you want strict failures
+		engine.setProperty(RuntimeConstants.RUNTIME_REFERENCES_STRICT, Boolean.FALSE);
+		// Allow hyphens in identifiers if your keys/variables use them
+		engine.setProperty("parser.allow_hyphen_in_identifiers", Boolean.TRUE);
+		engine.init();
 
 		boolean changed;
 		int maxIterations = 10;
@@ -96,32 +122,7 @@ public class PropsUtils {
 
 			for (Map.Entry<String, String> entry : map.entrySet()) {
 				String original = entry.getValue();
-				String resolved = original;
-				Matcher matcher = exprPattern.matcher(original);
-				StringBuilder result = new StringBuilder();
-
-				while (matcher.find()) {
-					String expr = matcher.group(1);
-					String replacement;
-
-					try {
-						if (expr.contains("(") || expr.contains(".")) {
-							mvelContext.putAll(map);
-							resolverFactory = new MapVariableResolverFactory(mvelContext);
-							Object evalResult = MVEL.eval(expr, resolverFactory);
-							replacement = evalResult != null ? evalResult.toString() : "";
-						} else {
-							replacement = matcher.group(0);
-						}
-					} catch (Exception ex) {
-						replacement = matcher.group(0);
-					}
-
-					matcher.appendReplacement(result, Matcher.quoteReplacement(replacement));
-				}
-				matcher.appendTail(result);
-
-				resolved = result.toString();
+				String resolved = renderValue(engine, map, userContext, original);
 
 				if (!original.equals(resolved)) {
 					entry.setValue(resolved);
@@ -131,4 +132,19 @@ public class PropsUtils {
 		} while (changed && iteration < maxIterations);
 	}
 
+	private String renderValue(VelocityEngine engine, Map<String, String> currentMap, Map<String, ?> userContext,
+			String template) {
+		VelocityContext vc = new VelocityContext();
+
+		// Put user variables/tools (e.g., "utils")
+		if (userContext != null) {
+			userContext.forEach(vc::put);
+		}
+		// Put current properties (so $otherKey works; keep last-writer-wins semantics)
+		currentMap.forEach(vc::put);
+
+		StringWriter out = new StringWriter();
+		engine.evaluate(vc, out, "PropsUtils", template);
+		return out.toString();
+	}
 }
