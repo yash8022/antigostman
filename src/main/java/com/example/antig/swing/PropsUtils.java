@@ -1,8 +1,11 @@
-package com.example.antig.swing.service;
+package com.example.antig.swing;
 
+import java.io.IOException;
 import java.io.StringReader;
+import java.io.StringWriter;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Properties;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -16,23 +19,50 @@ import lombok.experimental.UtilityClass;
 @UtilityClass
 public class PropsUtils {
 
-	public Map<String, String> parse(String content) throws Exception {
+	public Map<String, String> parse(Map<String, String> map) {
+		Properties p = new Properties();
+		p.putAll(map);
+
+		try (StringWriter pw = new StringWriter()) {
+			p.store(pw, null);
+			return parse(pw.toString());
+		} catch (IOException ex) {
+			throw new RuntimeException(ex);
+		}
+	}
+
+	public Map<String, String> parse(String content) {
 		return parse(content, new LinkedHashMap<>());
 	}
 
-	public Map<String, String> parse(String content, Map<String, ?> context) throws Exception {
-		Pattern p = Pattern.compile("\\$([a-zA-Z_][a-zA-Z0-9_]*)(?![a-zA-Z0-9_.\\(])");
-		Matcher m = p.matcher(content);
+	public Map<String, String> parse(String content, Map<String, ?> context) {
+		String input;
+		{
+			Pattern p = Pattern.compile("\\$([a-zA-Z_][a-zA-Z0-9_]*)(?![a-zA-Z0-9_.\\(])",
+					Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
+			Matcher m = p.matcher(content);
 
-		StringBuilder sb = new StringBuilder();
-		while (m.find()) {
-			m.appendReplacement(sb, "\\${" + m.group(1) + "}");
+			StringBuilder sb = new StringBuilder();
+			while (m.find()) {
+				m.appendReplacement(sb, "\\${" + m.group(1) + "}");
+			}
+			m.appendTail(sb);
+			input = sb.toString();
+		}
+		{
+			Pattern p = Pattern.compile("\\{\\{\\s*([a-zA-Z_][a-zA-Z0-9_]*)(?![a-zA-Z0-9_.\\(])\\s*\\}\\}",
+					Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
+			Matcher m = p.matcher(content);
+
+			StringBuilder sb = new StringBuilder();
+			while (m.find()) {
+				m.appendReplacement(sb, "\\${" + m.group(1) + "}");
+			}
+			m.appendTail(sb);
+			input = sb.toString();
 		}
 
-		m.appendTail(sb);
-		String s = sb.toString();
-
-		try (StringReader r2 = new StringReader(s)) {
+		try (StringReader r2 = new StringReader(input)) {
 			PropertiesConfiguration config = new PropertiesConfiguration();
 			config.read(r2);
 			Map<String, String> map = new LinkedHashMap<>();
@@ -43,6 +73,8 @@ public class PropsUtils {
 			}
 
 			return map;
+		} catch (Exception ex) {
+			throw new RuntimeException(ex);
 		}
 	}
 

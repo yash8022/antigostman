@@ -13,13 +13,13 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.security.KeyManagementException;
 import java.security.NoSuchAlgorithmException;
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import java.util.UUID;
 
 import javax.script.ScriptEngine;
 import javax.script.ScriptEngineManager;
@@ -62,7 +62,6 @@ import com.example.antig.swing.service.RecentProjectsManager;
 import com.example.antig.swing.ui.NodeConfigPanel;
 import com.example.antig.swing.ui.PostmanTreeCellRenderer;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.socle2.templating.VelocityTemplateEngine;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -685,40 +684,6 @@ public class PostmanApp extends JFrame {
 		}
 	}
 
-	private String parse(String s, Map<String, String> map) {
-		Pattern P = Pattern.compile("\\{\\s*\\{(.+?)\\}\\s*\\}", Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
-		Matcher M = P.matcher(s);
-
-		while (M.find()) {
-			String g1 = M.group();
-			String g2 = M.group(1);
-			s = s.replace(g1, "${" + g2 + "}");
-
-			s = VelocityTemplateEngine.processStringTemplate(s, map);
-
-			M.reset(s);
-		}
-
-		String result = VelocityTemplateEngine.processStringTemplate(s, map);
-
-		return result;
-	}
-
-	private Map<String, String> parse(Map<String, String> map) {
-
-		Map<String, String> result = new LinkedHashMap<>(map);
-
-		for (String k : map.keySet()) {
-			String v = result.get(k);
-
-			v = parse(v, result);
-
-			result.put(k, v);
-		}
-
-		return result;
-	}
-
 	private String createPrescript(PostmanNode node) {
 		if (node == null) {
 			return null;
@@ -743,32 +708,48 @@ public class PostmanApp extends JFrame {
 		return createPostscript((PostmanNode) node.getParent());
 	}
 
-	private Map<String, String> createEnv(PostmanNode node) {
+	private Map<String, String> createEnv(PostmanNode node, boolean parse) {
 		if (node == null) {
 			return Map.of();
 		}
 
 		TreeNode parent = node.getParent();
 
-		Map<String, String> parentEnvMap = parent == null ? Map.of() : createEnv((PostmanNode) parent);
+		Map<String, String> parentEnvMap = parent == null ? Map.of() : createEnv((PostmanNode) parent, false);
 
-		TreeMap<String, String> map = new TreeMap<>();
-
-		// 1. Global Variables (Base) - Only if root
-		if (node instanceof PostmanCollection && node.getParent() == null) {
-			Map<String, String> globals = ((PostmanCollection) node).getGlobalVariables();
-			if (globals != null) {
-				map.putAll(globals);
-			}
-		}
-
-		// 2. Parent Environment (Inherited)
+		Map<String, String> map = new TreeMap<>();
 		map.putAll(parentEnvMap);
-
-		// 3. Node Environment (Specific)
 		map.putAll(node.getEnvironment());
 
-		return parse(map);
+		Collection<String> keys = map.keySet();
+
+		if (parse) {
+			map = parse(map);
+		}
+
+		Map<String, String> results = new TreeMap<>();
+		for (String k : keys) {
+			results.put(k, map.get(k));
+		}
+
+		return results;
+	}
+
+	private Map<String, String> parse(Map<String, String> map) {
+		return PropsUtils.parse(map);
+	}
+
+	public String parse(String value, Map<String, String> map) {
+
+		Map<String, String> m = new HashMap<>(map);
+		String key = UUID.randomUUID().toString();
+		m.put(key, value);
+
+		Map<String, String> m2 = PropsUtils.parse(m);
+
+		String result = m2.get(key);
+
+		return result;
 	}
 
 	private Map<String, String> createHeaders(PostmanNode node, Map<String, String> env, boolean parse) {
@@ -785,11 +766,20 @@ public class PostmanApp extends JFrame {
 		map.putAll(parentHeaderMap);
 		map.putAll(node.getHeaders());
 
+		Collection<String> keys = map.keySet();
+
+		map.putAll(env);
+
 		if (parse) {
 			map = parse(map);
 		}
 
-		return map;
+		Map<String, String> results = new TreeMap<>();
+		for (String k : keys) {
+			results.put(k, map.get(k));
+		}
+
+		return results;
 	}
 
 	private void sendRequest() {
@@ -801,7 +791,7 @@ public class PostmanApp extends JFrame {
 		saveCurrentNodeState(); // Ensure latest edits are saved
 
 		// 1. Initial Environment
-		Map<String, String> env = createEnv(currentNode);
+		Map<String, String> env = createEnv(currentNode, true);
 
 		Map<String, String> globalEnv = ((PostmanNode) rootCollection.getChildAt(0)).getEnvironment();
 
