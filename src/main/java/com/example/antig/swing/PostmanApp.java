@@ -118,7 +118,10 @@ public class PostmanApp extends JFrame {
 
 		initMenu();
 		initComponents();
+		initMenu();
+		initComponents();
 		initConsole();
+		initGlobalShortcuts();
 
 		// Load last opened project
 		SwingUtilities.invokeLater(this::restoreWorkspace);
@@ -594,8 +597,8 @@ public class PostmanApp extends JFrame {
 		Object[] options = { "Yes", "No" };
 		int response = JOptionPane.showOptionDialog(this, "Are you sure you want to delete '" + node.getName() + "'?",
 				"Confirm Delete", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE, null, options, options[1]); // Default
-																														// to
-																														// "No"
+		// to
+		// "No"
 
 		if (response != 0) {
 			return; // 0 = Yes, 1 = No
@@ -635,8 +638,7 @@ public class PostmanApp extends JFrame {
 
 			// Convert to XML model (no parent references), then back to PostmanNode
 			// This avoids cyclic serialization issues
-			com.example.antig.swing.model.xml.XmlNode xmlNode = com.example.antig.swing.service.NodeConverter
-					.toXmlNode(node);
+			com.example.antig.swing.model.xml.XmlNode xmlNode = com.example.antig.swing.service.NodeConverter.toXmlNode(node);
 
 			if (xmlNode == null) {
 				throw new RuntimeException("Failed to convert node to XML (returned null)");
@@ -931,8 +933,7 @@ public class PostmanApp extends JFrame {
 						// Response Headers
 						StringBuilder respHeadersSb = new StringBuilder();
 						respHeadersSb.append("Status: ").append(response.statusCode()).append("\n\n");
-						response.headers().map()
-								.forEach((k, v) -> respHeadersSb.append(k).append(": ").append(v).append("\n"));
+						response.headers().map().forEach((k, v) -> respHeadersSb.append(k).append(": ").append(v).append("\n"));
 						nodeConfigPanel.setResponseHeaders(respHeadersSb.toString());
 
 						// Response Body (with JSON formatting if applicable)
@@ -1136,8 +1137,13 @@ public class PostmanApp extends JFrame {
 			updateOpenProjectsList();
 			recentProjectsManager.addRecentProject(currentProjectFile);
 			updateRecentProjectsMenu((JMenu) getJMenuBar().getMenu(0).getMenuComponent(4));
+			recentProjectsManager.addRecentProject(currentProjectFile);
+			updateRecentProjectsMenu((JMenu) getJMenuBar().getMenu(0).getMenuComponent(4));
 			// Update title bar with saved file path
 			updateTitle();
+
+			// Visual feedback
+			triggerSaveFeedback();
 		} catch (Exception e) {
 			e.printStackTrace();
 			JOptionPane.showMessageDialog(this, "Error saving: " + e.getMessage());
@@ -1455,8 +1461,10 @@ public class PostmanApp extends JFrame {
 					index = targetParent.getChildCount();
 				}
 
-				// If moving within the same parent and moving down (source index < target index),
-				// we need to decrement the target index because removing the node shifted subsequent indices.
+				// If moving within the same parent and moving down (source index < target
+				// index),
+				// we need to decrement the target index because removing the node shifted
+				// subsequent indices.
 				if (currentParent == targetParent && currentIndex < index) {
 					index--;
 				}
@@ -1573,6 +1581,46 @@ public class PostmanApp extends JFrame {
 
 	private void clearConsole() {
 		consoleTextArea.setText("");
+	}
+
+	private void initGlobalShortcuts() {
+		javax.swing.JRootPane rootPane = getRootPane();
+		javax.swing.InputMap inputMap = rootPane.getInputMap(javax.swing.JComponent.WHEN_IN_FOCUSED_WINDOW);
+		javax.swing.ActionMap actionMap = rootPane.getActionMap();
+
+		javax.swing.KeyStroke ctrlS = javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_S,
+				java.awt.event.InputEvent.CTRL_DOWN_MASK);
+		inputMap.put(ctrlS, "saveProject");
+		actionMap.put("saveProject", new javax.swing.AbstractAction() {
+			@Override
+			public void actionPerformed(java.awt.event.ActionEvent e) {
+				saveProject();
+			}
+		});
+	}
+
+	private void triggerSaveFeedback() {
+		final javax.swing.JPanel glassPane = new javax.swing.JPanel() {
+			@Override
+			protected void paintComponent(java.awt.Graphics g) {
+				g.setColor(getBackground());
+				g.fillRect(0, 0, getWidth(), getHeight());
+				super.paintComponent(g);
+			}
+		};
+
+		// Dark Grey with transparency
+		glassPane.setBackground(new java.awt.Color(64, 64, 64, 100));
+		glassPane.setOpaque(false);
+
+		setGlassPane(glassPane);
+		glassPane.setVisible(true);
+
+		javax.swing.Timer timer = new javax.swing.Timer(200, e -> {
+			glassPane.setVisible(false);
+		});
+		timer.setRepeats(false);
+		timer.start();
 	}
 
 	private class ConsoleOutputStream extends java.io.OutputStream {
