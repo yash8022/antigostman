@@ -553,8 +553,8 @@ public class PostmanApp extends JFrame {
 			// Open email client with attachment
 			if (tempFile.exists()) {
 				String osName = System.getProperty("os.name").toLowerCase();
-				String subject = "API Test Report - " + req.getName();
-				String body = "Please find attached the API test report for: " + req.getName();
+				String subject = "Rapport de test";
+				String body = "Bonjour,\n\nJe vous prie de trouver ci-joint le rapport de test.\n\nCordialement.";
 				
 				boolean success = false;
 				
