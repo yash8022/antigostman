@@ -638,7 +638,8 @@ public class PostmanApp extends JFrame {
 
 			// Convert to XML model (no parent references), then back to PostmanNode
 			// This avoids cyclic serialization issues
-			com.example.antig.swing.model.xml.XmlNode xmlNode = com.example.antig.swing.service.NodeConverter.toXmlNode(node);
+			com.example.antig.swing.model.xml.XmlNode xmlNode = com.example.antig.swing.service.NodeConverter
+					.toXmlNode(node);
 
 			if (xmlNode == null) {
 				throw new RuntimeException("Failed to convert node to XML (returned null)");
@@ -792,7 +793,8 @@ public class PostmanApp extends JFrame {
 		map.put("utils", new Utils());
 		map.put("request", req);
 		map.put("console", new ConsoleLogger());
-
+		map.put("vars", rootCollection.getGlobalVariables());
+		map.putAll(rootCollection.getGlobalVariables());
 		return map;
 	}
 
@@ -872,7 +874,7 @@ public class PostmanApp extends JFrame {
 		}
 
 		// 6. Send Request
-		nodeConfigPanel.selectExecutionTab();
+//		nodeConfigPanel.selectExecutionTab();
 		sendButton.setEnabled(false);
 		nodeConfigPanel.getResponseArea().setText("Sending request...");
 		nodeConfigPanel.setResponseBodySyntax(SyntaxConstants.SYNTAX_STYLE_NONE);
@@ -886,6 +888,8 @@ public class PostmanApp extends JFrame {
 
 				String url = parse(req.getUrl(), variables);
 				String body = parse(finalBody, variables);
+
+				System.out.println("> " + url);
 
 				return httpClientService.sendRequest(url, req.getMethod(), body, finalHeaders, req.getTimeout(),
 						req.getHttpVersion());
@@ -933,7 +937,8 @@ public class PostmanApp extends JFrame {
 						// Response Headers
 						StringBuilder respHeadersSb = new StringBuilder();
 						respHeadersSb.append("Status: ").append(response.statusCode()).append("\n\n");
-						response.headers().map().forEach((k, v) -> respHeadersSb.append(k).append(": ").append(v).append("\n"));
+						response.headers().map()
+								.forEach((k, v) -> respHeadersSb.append(k).append(": ").append(v).append("\n"));
 						nodeConfigPanel.setResponseHeaders(respHeadersSb.toString());
 
 						// Response Body (with JSON formatting if applicable)
