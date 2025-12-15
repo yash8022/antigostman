@@ -20,6 +20,11 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.UUID;
+import java.io.FileWriter;
+import java.io.PrintWriter;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.awt.Desktop;
 
 import javax.script.ScriptEngine;
 import javax.script.ScriptEngineManager;
@@ -177,6 +182,11 @@ public class PostmanApp extends JFrame {
 		JMenuItem clearConsoleItem = new JMenuItem("Clear Console");
 		clearConsoleItem.addActionListener(e -> clearConsole());
 		viewMenu.add(clearConsoleItem);
+
+		viewMenu.addSeparator();
+		JMenuItem openLogItem = new JMenuItem("Open Log File");
+		openLogItem.addActionListener(e -> openLogFile());
+		viewMenu.add(openLogItem);
 
 		setJMenuBar(menuBar);
 	}
@@ -906,9 +916,10 @@ public class PostmanApp extends JFrame {
 				// Request Body
 				nodeConfigPanel.setRequestBody(finalBody != null ? finalBody : "");
 
+				HttpResponse<String> response = null;
+				Exception executionException = null;
+
 				try {
-					HttpResponse<String> response = null;
-					Exception executionException = null;
 					try {
 						response = get();
 					} catch (Exception ex) {
@@ -978,6 +989,8 @@ public class PostmanApp extends JFrame {
 					}
 				} finally {
 					sendButton.setEnabled(true);
+					// Log execution to file
+					logExecution(req, finalHeaders, finalBody, response, executionException);
 				}
 			}
 		};
@@ -1670,6 +1683,79 @@ public class PostmanApp extends JFrame {
 		@Override
 		public void flush() throws java.io.IOException {
 			target.flush();
+		}
+	}
+
+	private void openLogFile() {
+		if (currentProjectFile == null) {
+			JOptionPane.showMessageDialog(this, "No project saved. Log file is not available.");
+			return;
+		}
+		
+		File logFile = new File(currentProjectFile.getParentFile(), currentProjectFile.getName() + ".log");
+		if (!logFile.exists()) {
+			JOptionPane.showMessageDialog(this, "Log file does not exist yet.\nExecute a request to generate it.");
+			return;
+		}
+
+		try {
+			Desktop.getDesktop().open(logFile);
+		} catch (Exception e) {
+			e.printStackTrace();
+			JOptionPane.showMessageDialog(this, "Failed to open log file: " + e.getMessage());
+		}
+	}
+
+	private void logExecution(PostmanRequest req, Map<String, String> requestHeaders, String requestBody, 
+			HttpResponse<String> response, Exception exception) {
+		if (currentProjectFile == null) {
+			return; // Cannot log if project is not saved
+		}
+
+		File logFile = new File(currentProjectFile.getParentFile(), currentProjectFile.getName() + ".log");
+		
+		try (PrintWriter writer = new PrintWriter(new FileWriter(logFile, true))) {
+			DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS");
+			
+			writer.println("================================================================================");
+			writer.println("Execution Date: " + LocalDateTime.now().format(dtf));
+			writer.println("Request: " + req.getMethod() + " " + req.getUrl());
+			writer.println("Request Headers:");
+			if (requestHeaders != null) {
+				requestHeaders.forEach((k, v) -> writer.println("  " + k + ": " + v));
+			}
+			writer.println();
+			writer.println("Request Body:");
+			if (requestBody != null && !requestBody.isEmpty()) {
+				writer.println(requestBody);
+			} else {
+				writer.println("(empty)");
+			}
+			writer.println();
+			
+			if (response != null) {
+				writer.println("Response Status: " + response.statusCode());
+				writer.println("Response Headers:");
+				response.headers().map().forEach((k, v) -> writer.println("  " + k + ": " + v));
+				writer.println();
+				writer.println("Response Body:");
+				String body = response.body();
+				if (body != null && !body.isEmpty()) {
+					writer.println(body);
+				} else {
+					writer.println("(empty)");
+				}
+			} else if (exception != null) {
+				writer.println("Execution Failed:");
+				exception.printStackTrace(writer);
+			}
+			
+			writer.println("================================================================================");
+			writer.println();
+			
+		} catch (Exception e) {
+			System.err.println("Failed to write to log file: " + e.getMessage());
+			e.printStackTrace();
 		}
 	}
 }
