@@ -42,7 +42,7 @@ public class PdfReportService {
 	private static final Font FONT_TABLE_HEADER = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 10, COLOR_SECONDARY);
 
 	public void generateReport(PostmanRequest req, String projectName, Map<String, String> requestHeaders, String requestBody,
-			HttpResponse<String> response, Exception exception, String consoleOutput, File outputFile) throws IOException, DocumentException {
+			HttpResponse<String> response, Exception exception, String consoleOutput, long durationMs, File outputFile) throws IOException, DocumentException {
 
 		Document document = new Document(PageSize.A4, 50, 50, 50, 50);
 		PdfWriter.getInstance(document, new FileOutputStream(outputFile));
@@ -56,7 +56,7 @@ public class PdfReportService {
 		document.open();
 
 		// Title Page
-		addTitlePage(document, req, projectName);
+		addTitlePage(document, req, projectName, durationMs);
 
 		// Request Section
 		addSectionHeader(document, "Request Details");
@@ -110,7 +110,7 @@ public class PdfReportService {
 		document.close();
 	}
 
-	private void addTitlePage(Document document, PostmanRequest req, String projectName) throws DocumentException {
+	private void addTitlePage(Document document, PostmanRequest req, String projectName, long durationMs) throws DocumentException {
 		PdfPTable headerTable = new PdfPTable(1);
 		headerTable.setWidthPercentage(100);
 		headerTable.setSpacingAfter(20);
@@ -129,6 +129,17 @@ public class PdfReportService {
 		dateP.setAlignment(Element.ALIGN_RIGHT);
 		dateP.setSpacingAfter(10);
 		document.add(dateP);
+		
+		// Format duration: mm:ss
+		long seconds = durationMs / 1000;
+		long minutes = seconds / 60;
+		long remainingSeconds = seconds % 60;
+		String durationStr = String.format("%02d:%02d", minutes, remainingSeconds);
+		
+		Paragraph durationP = new Paragraph("Duration: " + durationStr, FONT_BODY);
+		durationP.setAlignment(Element.ALIGN_RIGHT);
+		durationP.setSpacingAfter(10);
+		document.add(durationP);
 		
 		Paragraph projectP = new Paragraph("Project: " + projectName, FONT_H1);
 		projectP.setSpacingAfter(10);

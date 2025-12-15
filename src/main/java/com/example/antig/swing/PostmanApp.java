@@ -119,6 +119,7 @@ public class PostmanApp extends JFrame {
 	private Map<String, String> lastExecutionRequestHeaders;
 	private String lastExecutionRequestBody;
 	private String lastExecutionConsoleLog;
+	private long lastExecutionDuration; // Duration in milliseconds
 	private int consoleStartOffset = 0; // To track log start for current request
 
 	public PostmanApp() throws KeyManagementException, NoSuchAlgorithmException {
@@ -503,7 +504,7 @@ public class PostmanApp extends JFrame {
 			String consoleOutput = lastExecutionConsoleLog != null ? lastExecutionConsoleLog : "";
 
 			pdfService.generateReport(req, projectName, lastExecutionRequestHeaders, lastExecutionRequestBody,
-					lastExecutionResponse, lastExecutionException, consoleOutput, tempFile);
+					lastExecutionResponse, lastExecutionException, consoleOutput, lastExecutionDuration, tempFile);
 
 			// Open immediately
 			if (tempFile.exists()) {
@@ -899,6 +900,7 @@ public class PostmanApp extends JFrame {
 		lastExecutionRequestHeaders = null;
 		lastExecutionRequestBody = null;
 		lastExecutionConsoleLog = null;
+		lastExecutionDuration = 0;
 
 			try {
 				// 1. Initial Environment
@@ -982,6 +984,8 @@ public class PostmanApp extends JFrame {
 
 				String finalBody = bodyToSend;
 				Map<String, String> finalHeaders = headers;
+
+				long startTime = System.currentTimeMillis();
 
 				SwingWorker<HttpResponse<String>, Void> worker = new SwingWorker<>() {
 					@Override
@@ -1079,6 +1083,9 @@ public class PostmanApp extends JFrame {
 								executionException.printStackTrace();
 							}
 						} finally {
+							long endTime = System.currentTimeMillis();
+							long duration = endTime - startTime;
+							
 							sendButton.setEnabled(true);
 							sendButton.setEnabled(true);
 							// Log execution to file
@@ -1089,6 +1096,7 @@ public class PostmanApp extends JFrame {
 							lastExecutionException = executionException;
 							lastExecutionRequestHeaders = finalHeaders;
 							lastExecutionRequestBody = finalBody;
+							lastExecutionDuration = duration;
 
 							// Capture console log for this request using invokeLater to catch pending prints (e.g. from printStackTrace)
 							SwingUtilities.invokeLater(() -> captureConsoleLog());
