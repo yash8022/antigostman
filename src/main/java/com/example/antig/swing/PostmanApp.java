@@ -285,6 +285,7 @@ public class PostmanApp extends JFrame {
 		// Center: Tabbed configuration panel
 		nodeConfigPanel = new NodeConfigPanel();
 		nodeConfigPanel.setPdfGenerator(this::generatePdfReport);
+		nodeConfigPanel.setPdfEmailSender(this::emailPdfReport);
 		// nodeConfigPanel.setAutoSaveCallback(this::autoSaveProject); // Autosave
 		// disabled
 		nodeConfigPanel.setRecentProjectsManager(recentProjectsManager);
@@ -514,6 +515,122 @@ public class PostmanApp extends JFrame {
 		} catch (Exception e) {
 			e.printStackTrace();
 			JOptionPane.showMessageDialog(this, "Error generating report: " + e.getMessage());
+		}
+	}
+	
+	private void emailPdfReport() {
+		if (!(currentNode instanceof PostmanRequest)) {
+			return;
+		}
+
+		PostmanRequest req = (PostmanRequest) currentNode;
+
+		if (lastExecutionResponse == null && lastExecutionException == null) {
+			int choice = JOptionPane.showConfirmDialog(this,
+					"No recent execution found in memory.\nDo you want to run the request now and generate the report?",
+					"No Execution Data", JOptionPane.YES_NO_OPTION);
+			if (choice == JOptionPane.YES_OPTION) {
+				sendRequest();
+				return;
+			} else {
+				return;
+			}
+		}
+
+		try {
+			// Generate PDF to a temp file
+			File tempFile = File.createTempFile("antig_report_" + req.getId() + "_", ".pdf");
+
+			com.example.antig.swing.service.PdfReportService pdfService = new com.example.antig.swing.service.PdfReportService();
+
+			String projectName = rootCollection != null ? rootCollection.getName() : "Unknown Project";
+
+			String consoleOutput = lastExecutionConsoleLog != null ? lastExecutionConsoleLog : "";
+
+			pdfService.generateReport(req, projectName, lastExecutionRequestHeaders, lastExecutionRequestBody,
+					lastExecutionResponse, lastExecutionException, consoleOutput, lastExecutionDuration, tempFile);
+
+			// Open email client with attachment
+			if (tempFile.exists()) {
+				String osName = System.getProperty("os.name").toLowerCase();
+				String subject = "API Test Report - " + req.getName();
+				String body = "Please find attached the API test report for: " + req.getName();
+				
+				boolean success = false;
+				
+				// Windows: Use Outlook via PowerShell
+				if (osName.contains("win")) {
+					try {
+						String powershellScript = String.format(
+							"$outlook = New-Object -ComObject Outlook.Application;" +
+							"$mail = $outlook.CreateItem(0);" +
+							"$mail.Subject = '%s';" +
+							"$mail.Body = '%s';" +
+							"$mail.Attachments.Add('%s');" +
+							"$mail.Display()",
+							subject.replace("'", "''"),
+							body.replace("'", "''"),
+							tempFile.getAbsolutePath().replace("\\", "\\\\")
+						);
+						
+						ProcessBuilder pb = new ProcessBuilder(
+							"powershell.exe",
+							"-Command",
+							powershellScript
+						);
+						pb.start();
+						success = true;
+					} catch (Exception e) {
+						System.err.println("Outlook PowerShell command failed: " + e.getMessage());
+					}
+				}
+				// Linux/Unix: Use Thunderbird
+				else if (osName.contains("nix") || osName.contains("nux") || osName.contains("aix")) {
+					try {
+						ProcessBuilder pb = new ProcessBuilder(
+							"thunderbird",
+							"-compose",
+							String.format("subject='%s',body='%s',attachment='file://%s'",
+								subject.replace("'", "\\'"),
+								body.replace("'", "\\'"),
+								tempFile.getAbsolutePath())
+						);
+						pb.start();
+						success = true;
+					} catch (Exception e) {
+						System.err.println("Thunderbird command failed: " + e.getMessage());
+					}
+				}
+				
+				// Fallback: use Desktop API (without attachment)
+				if (!success && java.awt.Desktop.isDesktopSupported()) {
+					java.awt.Desktop desktop = java.awt.Desktop.getDesktop();
+					
+					// Create mailto URI
+					String mailto = String.format("mailto:?subject=%s&body=%s",
+							java.net.URLEncoder.encode(subject, "UTF-8"),
+							java.net.URLEncoder.encode(body, "UTF-8"));
+					
+					desktop.browse(new java.net.URI(mailto));
+					
+					// Also open the PDF so user can easily attach it
+					desktop.open(tempFile);
+					
+					JOptionPane.showMessageDialog(this,
+							"Email client opened with subject and body.\nPlease attach the PDF file that was opened.",
+							"Email Prepared",
+							JOptionPane.INFORMATION_MESSAGE);
+				} else if (!success) {
+					JOptionPane.showMessageDialog(this,
+							"Could not open email client.\nPDF saved at: " + tempFile.getAbsolutePath(),
+							"Error",
+							JOptionPane.ERROR_MESSAGE);
+				}
+			}
+
+		} catch (Exception e) {
+			e.printStackTrace();
+			JOptionPane.showMessageDialog(this, "Error preparing email: " + e.getMessage());
 		}
 	}
 

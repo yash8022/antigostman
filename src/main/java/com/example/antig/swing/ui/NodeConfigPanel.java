@@ -72,11 +72,23 @@ public class NodeConfigPanel extends JPanel {
 	private PostmanNode currentNode;
 	private RecentProjectsManager recentProjectsManager;
 	private Runnable pdfGenerator;
+	private Runnable pdfEmailSender;
 	private boolean isLoading = false;
 	
 	public void setPdfGenerator(Runnable pdfGenerator) {
 		this.pdfGenerator = pdfGenerator;
 		// Re-create execution tabs to include the PDF button
+		if (executionResultsPanel != null) {
+			executionResultsPanel.removeAll();
+			createExecutionResultsPanel();
+			executionResultsPanel.revalidate();
+			executionResultsPanel.repaint();
+		}
+	}
+	
+	public void setPdfEmailSender(Runnable pdfEmailSender) {
+		this.pdfEmailSender = pdfEmailSender;
+		// Re-create execution tabs to include the email button
 		if (executionResultsPanel != null) {
 			executionResultsPanel.removeAll();
 			createExecutionResultsPanel();
@@ -773,6 +785,15 @@ public class NodeConfigPanel extends JPanel {
 			pdfButton.setToolTipText("Generate PDF Report");
 			pdfButton.addActionListener(e -> this.pdfGenerator.run());
 			toolbar.add(pdfButton);
+			
+			JButton emailButton = new JButton("Email PDF");
+			emailButton.setToolTipText("Send PDF Report via Email");
+			emailButton.addActionListener(e -> {
+				if (this.pdfEmailSender != null) {
+					this.pdfEmailSender.run();
+				}
+			});
+			toolbar.add(emailButton);
 		}
 
 		panel.add(toolbar, BorderLayout.NORTH);
