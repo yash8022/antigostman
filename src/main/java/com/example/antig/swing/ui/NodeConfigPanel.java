@@ -54,6 +54,8 @@ import com.example.antig.swing.service.RecentProjectsManager;
 public class NodeConfigPanel extends JPanel {
 
 	private JTabbedPane tabbedPane;
+	private static final String INDICATOR_HTML = " <font color='#FF8C00'>●</font>";
+	private static final String INDICATOR_RAW = "●";
 
 	// Common tabs
 	private RSyntaxTextArea environmentArea;
@@ -145,6 +147,14 @@ public class NodeConfigPanel extends JPanel {
 		// Initially created without PDF button (generator is null). 
 		// Will be recreated when setPdfGenerator is called.
 		createExecutionResultsPanel();
+
+		// Add indicator listeners
+		addIndicatorListener(environmentArea, "Environment");
+		addIndicatorListener(headersArea, "Headers");
+		addIndicatorListener(prescriptArea, "Prescript");
+		addIndicatorListener(postscriptArea, "Postscript");
+		addIndicatorListener(globalVarsArea, "Global Variables");
+		addIndicatorListener(bodyArea, "Body");
 
 		// Add listener to track tab selection changes
 		tabbedPane.addChangeListener(e -> {
@@ -348,6 +358,66 @@ public class NodeConfigPanel extends JPanel {
 		return textArea;
 	}
 
+	private void addIndicatorListener(JTextArea area, String title) {
+		area.getDocument().addDocumentListener(new DocumentListener() {
+			@Override
+			public void insertUpdate(DocumentEvent e) {
+				check();
+			}
+
+			@Override
+			public void removeUpdate(DocumentEvent e) {
+				check();
+			}
+
+			@Override
+			public void changedUpdate(DocumentEvent e) {
+				check();
+			}
+
+			private void check() {
+				updateTabIndicator(title, area.getText().trim().length() > 0);
+			}
+		});
+	}
+
+	private void updateTabIndicator(String baseTitle, boolean hasContent) {
+		for (int i = 0; i < tabbedPane.getTabCount(); i++) {
+			String currentPlain = getPlainTitleAt(i);
+			if (currentPlain.equals(baseTitle)) {
+				String newTitle = baseTitle;
+				if (hasContent) {
+					newTitle = "<html>" + baseTitle + INDICATOR_HTML + "</html>";
+				}
+				if (!tabbedPane.getTitleAt(i).equals(newTitle)) {
+					tabbedPane.setTitleAt(i, newTitle);
+				}
+				return;
+			}
+		}
+	}
+
+	private String getPlainTitleAt(int index) {
+		String title = tabbedPane.getTitleAt(index);
+		if (title.startsWith("<html>")) {
+			return title.replaceAll("\\<.*?\\>", "").replace(INDICATOR_RAW, "").trim();
+		}
+		return title;
+	}
+
+	private void updateAllIndicators() {
+		updateTabIndicator("Environment", environmentArea.getText().trim().length() > 0);
+		updateTabIndicator("Headers", headersArea.getText().trim().length() > 0);
+		updateTabIndicator("Prescript", prescriptArea.getText().trim().length() > 0);
+		updateTabIndicator("Postscript", postscriptArea.getText().trim().length() > 0);
+		if (globalVarsArea != null) {
+			updateTabIndicator("Global Variables", globalVarsArea.getText().trim().length() > 0);
+		}
+		if (bodyArea != null) {
+			updateTabIndicator("Body", bodyArea.getText().trim().length() > 0);
+		}
+	}
+
 	private void createExecutionResultsPanel() {
 		executionResultsPanel = new JPanel(new BorderLayout());
 		
@@ -427,7 +497,7 @@ public class NodeConfigPanel extends JPanel {
 				// It's the root collection
 				boolean tabExists = false;
 				for (int i = 0; i < tabbedPane.getTabCount(); i++) {
-					if ("Global Variables".equals(tabbedPane.getTitleAt(i))) {
+					if ("Global Variables".equals(getPlainTitleAt(i))) {
 						tabExists = true;
 						break;
 					}
@@ -499,7 +569,7 @@ public class NodeConfigPanel extends JPanel {
 			} else {
 				// Remove Global Variables tab if present
 				for (int i = 0; i < tabbedPane.getTabCount(); i++) {
-					if ("Global Variables".equals(tabbedPane.getTitleAt(i))) {
+					if ("Global Variables".equals(getPlainTitleAt(i))) {
 						tabbedPane.removeTabAt(i);
 						break;
 					}
@@ -518,7 +588,7 @@ public class NodeConfigPanel extends JPanel {
 				// ADD Body Tab if NOT present
 				boolean bodyTabExists = false;
 				for(int i=0; i<tabbedPane.getTabCount(); i++) {
-					if("Body".equals(tabbedPane.getTitleAt(i))) {
+					if("Body".equals(getPlainTitleAt(i))) {
 						bodyTabExists = true;
 						break;
 					}
@@ -571,7 +641,7 @@ public class NodeConfigPanel extends JPanel {
 			} else {
 				// Remove Body tab if present
 				for (int i = 0; i < tabbedPane.getTabCount(); i++) {
-					if ("Body".equals(tabbedPane.getTitleAt(i))) {
+					if ("Body".equals(getPlainTitleAt(i))) {
 						tabbedPane.removeTabAt(i);
 						break;
 					}
@@ -591,6 +661,8 @@ public class NodeConfigPanel extends JPanel {
 			} else {
 				tabbedPane.setSelectedIndex(0);
 			}
+
+			updateAllIndicators();
 		} finally {
 			this.isLoading = false;
 		}
@@ -722,8 +794,6 @@ public class NodeConfigPanel extends JPanel {
 	 * Clear all fields.
 	 */
 	private void clearAll() {
-		environmentArea.setText("");
-		headersArea.setText("");
 		environmentArea.setText("");
 		headersArea.setText("");
 		prescriptArea.setText("");
