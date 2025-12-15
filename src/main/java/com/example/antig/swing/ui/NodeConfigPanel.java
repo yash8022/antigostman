@@ -71,7 +71,19 @@ public class NodeConfigPanel extends JPanel {
 
 	private PostmanNode currentNode;
 	private RecentProjectsManager recentProjectsManager;
+	private Runnable pdfGenerator;
 	private boolean isLoading = false;
+	
+	public void setPdfGenerator(Runnable pdfGenerator) {
+		this.pdfGenerator = pdfGenerator;
+		// Re-create execution tabs to include the PDF button
+		if (executionResultsPanel != null) {
+			executionResultsPanel.removeAll();
+			createExecutionResultsPanel();
+			executionResultsPanel.revalidate();
+			executionResultsPanel.repaint();
+		}
+	}
 
 	public void setRecentProjectsManager(RecentProjectsManager recentProjectsManager) {
 		this.recentProjectsManager = recentProjectsManager;
@@ -111,6 +123,8 @@ public class NodeConfigPanel extends JPanel {
 		bodyArea = createBodyEditor();
 
 		// Bottom: Execution Results
+		// Initially created without PDF button (generator is null). 
+		// Will be recreated when setPdfGenerator is called.
 		createExecutionResultsPanel();
 
 		// Add listener to track tab selection changes
@@ -716,6 +730,14 @@ public class NodeConfigPanel extends JPanel {
 		}
 	}
 
+	public String getResponseBody() {
+		return responseBodyArea != null ? responseBodyArea.getText() : "";
+	}
+
+	public String getResponseHeaders() {
+		return responseHeadersArea != null ? responseHeadersArea.getText() : "";
+	}
+
 	private JPanel createTabWithToolbar(RSyntaxTextArea textArea, Runnable onClear) {
 		JPanel panel = new JPanel(new BorderLayout());
 		JToolBar toolbar = new JToolBar();
@@ -745,6 +767,13 @@ public class NodeConfigPanel extends JPanel {
 		toolbar.add(clearButton);
 		toolbar.add(saveButton);
 		toolbar.add(openAfterSave);
+		
+		if (this.pdfGenerator != null) {
+			JButton pdfButton = new JButton("PDF");
+			pdfButton.setToolTipText("Generate PDF Report");
+			pdfButton.addActionListener(e -> this.pdfGenerator.run());
+			toolbar.add(pdfButton);
+		}
 
 		panel.add(toolbar, BorderLayout.NORTH);
 		panel.add(new RTextScrollPane(textArea), BorderLayout.CENTER);

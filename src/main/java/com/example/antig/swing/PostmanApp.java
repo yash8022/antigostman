@@ -31,6 +31,7 @@ import javax.script.ScriptEngineManager;
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.JButton;
+import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
@@ -98,6 +99,8 @@ public class PostmanApp extends JFrame {
 	private JTextArea requestBodyArea;
 	private JSpinner timeoutSpinner;
 	private JButton sendButton;
+	private JButton pdfButton; // New PDF Button
+	private JCheckBox pdfOpenCheckbox; // New Checkbox
 	private JPanel requestToolbar;
 
 	private PostmanNode currentNode;
@@ -109,6 +112,12 @@ public class PostmanApp extends JFrame {
 
 	// Static reference to keep the socket alive
 	private static java.net.ServerSocket lockSocket;
+
+	// Transient state for last execution (for PDF generation)
+	private HttpResponse<String> lastExecutionResponse;
+	private Exception lastExecutionException;
+	private Map<String, String> lastExecutionRequestHeaders;
+	private String lastExecutionRequestBody;
 
 	public PostmanApp() throws KeyManagementException, NoSuchAlgorithmException {
 		this.httpClientService = new HttpClientService();
@@ -272,6 +281,7 @@ public class PostmanApp extends JFrame {
 
 		// Center: Tabbed configuration panel
 		nodeConfigPanel = new NodeConfigPanel();
+		nodeConfigPanel.setPdfGenerator(this::generatePdfReport);
 		// nodeConfigPanel.setAutoSaveCallback(this::autoSaveProject); // Autosave
 		// disabled
 		nodeConfigPanel.setRecentProjectsManager(recentProjectsManager);
@@ -421,6 +431,8 @@ public class PostmanApp extends JFrame {
 			}
 		});
 
+
+
 		JPanel leftPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
 		leftPanel.add(methodComboBox);
 		leftPanel.add(Box.createHorizontalStrut(5));
@@ -442,6 +454,49 @@ public class PostmanApp extends JFrame {
 		toolbar.setVisible(false);
 
 		return toolbar;
+	}
+
+	private void generatePdfReport() {
+		if (!(currentNode instanceof PostmanRequest)) {
+			return;
+		}
+
+		PostmanRequest req = (PostmanRequest) currentNode;
+		
+		if (lastExecutionResponse == null && lastExecutionException == null) {
+			int choice = JOptionPane.showConfirmDialog(this, 
+					"No recent execution found in memory.\nDo you want to run the request now and generate the report?",
+					"No Execution Data", JOptionPane.YES_NO_OPTION);
+			if (choice == JOptionPane.YES_OPTION) {
+				sendRequest();
+				// We need to wait for worker to finish... this is async. 
+				// For now let's just return.
+				return; 
+			} else {
+				return;
+			}
+		}
+
+		try {
+			// Save to temp file
+			File tempFile = File.createTempFile("antig_report_" + req.getId() + "_", ".pdf");
+			
+			com.example.antig.swing.service.PdfReportService pdfService = new com.example.antig.swing.service.PdfReportService();
+			
+			String projectName = rootCollection != null ? rootCollection.getName() : "Unknown Project";
+			
+			pdfService.generateReport(req, projectName, lastExecutionRequestHeaders, lastExecutionRequestBody, 
+					lastExecutionResponse, lastExecutionException, tempFile);
+				
+			// Open immediately
+			if (tempFile.exists()) {
+				java.awt.Desktop.getDesktop().open(tempFile);
+			}
+			
+		} catch (Exception e) {
+			e.printStackTrace();
+			JOptionPane.showMessageDialog(this, "Error generating report: " + e.getMessage());
+		}
 	}
 
 	private void onNodeSelected() {
@@ -483,6 +538,8 @@ public class PostmanApp extends JFrame {
 
 				// Show request toolbar
 				requestToolbar.setVisible(true);
+				requestToolbar.revalidate();
+				requestToolbar.repaint();
 			} else {
 				// Hide request toolbar for collections/folders
 				Component[] components = nodeConfigPanel.getParent().getComponents();
@@ -491,6 +548,7 @@ public class PostmanApp extends JFrame {
 						comp.setVisible(false);
 					}
 				}
+				requestToolbar.setVisible(false);
 			}
 		} finally {
 			isLoadingNode = false; // Always reset flag
@@ -989,8 +1047,15 @@ public class PostmanApp extends JFrame {
 					}
 				} finally {
 					sendButton.setEnabled(true);
+					sendButton.setEnabled(true);
 					// Log execution to file
 					logExecution(req, finalHeaders, finalBody, response, executionException);
+					
+					// Store for PDF report
+					lastExecutionResponse = response;
+					lastExecutionException = executionException;
+					lastExecutionRequestHeaders = finalHeaders;
+					lastExecutionRequestBody = finalBody;
 				}
 			}
 		};
