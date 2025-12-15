@@ -2,6 +2,9 @@ package com.example.antig.swing.ui;
 
 import java.awt.BorderLayout;
 import java.awt.Font;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.Insets;
 import java.io.File;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -10,12 +13,14 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JFileChooser;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.JScrollPane;
 import javax.swing.JSplitPane;
 import javax.swing.JTabbedPane;
 import javax.swing.JTextArea;
@@ -56,6 +61,8 @@ public class NodeConfigPanel extends JPanel {
 	private RSyntaxTextArea prescriptArea;
 	private RSyntaxTextArea postscriptArea;
 	private RSyntaxTextArea globalVarsArea; // For root node only
+	private JTextArea emailToArea; // For root collection settings
+	private JTextArea emailCcArea; // For root collection settings
 
 	// Request-only tabs
 	private RSyntaxTextArea bodyArea;
@@ -431,10 +438,75 @@ public class NodeConfigPanel extends JPanel {
 				}
 				com.example.antig.swing.model.PostmanCollection col = (com.example.antig.swing.model.PostmanCollection) node;
 				globalVarsArea.setText(mapToProperties(col.getGlobalVariables()));
+				
+				// Handle Settings tab for root node
+				boolean settingsTabExists = false;
+				for (int i = 0; i < tabbedPane.getTabCount(); i++) {
+					if ("Settings".equals(tabbedPane.getTitleAt(i))) {
+						settingsTabExists = true;
+						break;
+					}
+				}
+				
+				if (!settingsTabExists) {
+					// Create Settings panel
+					JPanel settingsPanel = new JPanel(new BorderLayout(5, 5));
+					settingsPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+					
+					JPanel formPanel = new JPanel(new GridBagLayout());
+					GridBagConstraints gbc = new GridBagConstraints();
+					gbc.fill = GridBagConstraints.HORIZONTAL;
+					gbc.insets = new Insets(5, 5, 5, 5);
+					gbc.weightx = 0.0;
+					gbc.gridx = 0;
+					gbc.gridy = 0;
+					
+					// Email To
+					formPanel.add(new JLabel("Email Report To:"), gbc);
+					gbc.gridx = 1;
+					gbc.weightx = 1.0;
+					gbc.fill = GridBagConstraints.BOTH;
+					gbc.weighty = 0.3;
+					emailToArea = new JTextArea(3, 40);
+					emailToArea.setLineWrap(true);
+					emailToArea.setWrapStyleWord(true);
+					formPanel.add(new JScrollPane(emailToArea), gbc);
+					
+					// Email CC
+					gbc.gridx = 0;
+					gbc.gridy = 1;
+					gbc.weightx = 0.0;
+					gbc.weighty = 0.0;
+					gbc.fill = GridBagConstraints.HORIZONTAL;
+					formPanel.add(new JLabel("Email Report CC:"), gbc);
+					gbc.gridx = 1;
+					gbc.weightx = 1.0;
+					gbc.fill = GridBagConstraints.BOTH;
+					gbc.weighty = 0.3;
+					emailCcArea = new JTextArea(3, 40);
+					emailCcArea.setLineWrap(true);
+					emailCcArea.setWrapStyleWord(true);
+					formPanel.add(new JScrollPane(emailCcArea), gbc);
+					
+					settingsPanel.add(formPanel, BorderLayout.NORTH);
+					
+					tabbedPane.addTab("Settings", settingsPanel);
+				}
+				
+				// Load email settings
+				emailToArea.setText(col.getEmailReportTo() != null ? col.getEmailReportTo() : "");
+				emailCcArea.setText(col.getEmailReportCc() != null ? col.getEmailReportCc() : "");
 			} else {
 				// Remove Global Variables tab if present
 				for (int i = 0; i < tabbedPane.getTabCount(); i++) {
 					if ("Global Variables".equals(tabbedPane.getTitleAt(i))) {
+						tabbedPane.removeTabAt(i);
+						break;
+					}
+				}
+				// Remove Settings tab if present
+				for (int i = 0; i < tabbedPane.getTabCount(); i++) {
+					if ("Settings".equals(tabbedPane.getTitleAt(i))) {
 						tabbedPane.removeTabAt(i);
 						break;
 					}
@@ -552,6 +624,14 @@ public class NodeConfigPanel extends JPanel {
 			com.example.antig.swing.model.PostmanCollection col = (com.example.antig.swing.model.PostmanCollection) currentNode;
 			Map<String, String> vars = propertiesToMap(globalVarsArea.getText());
 			col.setGlobalVariables(vars);
+			
+			// Save email settings
+			if (emailToArea != null) {
+				col.setEmailReportTo(emailToArea.getText());
+			}
+			if (emailCcArea != null) {
+				col.setEmailReportCc(emailCcArea.getText());
+			}
 		}
 
 		// Save request-specific data

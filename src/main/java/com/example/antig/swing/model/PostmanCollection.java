@@ -60,4 +60,23 @@ public class PostmanCollection extends PostmanNode {
     public void setGlobalVariables(java.util.Map<String, String> globalVariables) {
         this.globalVariables = globalVariables;
     }
+    
+    private String emailReportTo = "";
+    private String emailReportCc = "";
+    
+    public String getEmailReportTo() {
+        return emailReportTo;
+    }
+    
+    public void setEmailReportTo(String emailReportTo) {
+        this.emailReportTo = emailReportTo;
+    }
+    
+    public String getEmailReportCc() {
+        return emailReportCc;
+    }
+    
+    public void setEmailReportCc(String emailReportCc) {
+        this.emailReportCc = emailReportCc;
+    }
 }

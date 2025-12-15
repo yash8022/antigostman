@@ -78,6 +78,8 @@ public class NodeConverter {
 			if (collection.getGlobalVariables() != null) {
 				xmlCollection.setGlobalVariables(new LinkedHashMap<>(collection.getGlobalVariables()));
 			}
+			xmlCollection.setEmailReportTo(collection.getEmailReportTo() != null ? collection.getEmailReportTo() : "");
+			xmlCollection.setEmailReportCc(collection.getEmailReportCc() != null ? collection.getEmailReportCc() : "");
 
 			// Convert children - use actual tree structure, not the children list
 			List<XmlNode> xmlChildren = new ArrayList<>();
@@ -217,6 +219,8 @@ public class NodeConverter {
 			if (xmlCollection.getGlobalVariables() != null) {
 				collection.setGlobalVariables(new LinkedHashMap<>(xmlCollection.getGlobalVariables()));
 			}
+			collection.setEmailReportTo(xmlCollection.getEmailReportTo() != null ? xmlCollection.getEmailReportTo() : "");
+			collection.setEmailReportCc(xmlCollection.getEmailReportCc() != null ? xmlCollection.getEmailReportCc() : "");
 
 			// Convert children
 			if (xmlCollection.getChildren() != null) {

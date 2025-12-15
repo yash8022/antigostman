@@ -556,6 +556,14 @@ public class PostmanApp extends JFrame {
 				String subject = "Rapport de test";
 				String body = "Bonjour,\n\nJe vous prie de trouver ci-joint le rapport de test.\n\nCordialement.";
 				
+				// Get email recipients from settings
+				String emailTo = "";
+				String emailCc = "";
+				if (rootCollection != null) {
+					emailTo = rootCollection.getEmailReportTo() != null ? rootCollection.getEmailReportTo() : "";
+					emailCc = rootCollection.getEmailReportCc() != null ? rootCollection.getEmailReportCc() : "";
+				}
+				
 				boolean success = false;
 				
 				// Windows: Use Outlook via PowerShell
@@ -566,10 +574,14 @@ public class PostmanApp extends JFrame {
 							"$mail = $outlook.CreateItem(0);" +
 							"$mail.Subject = '%s';" +
 							"$mail.Body = '%s';" +
+							"$mail.To = '%s';" +
+							"$mail.CC = '%s';" +
 							"$mail.Attachments.Add('%s');" +
 							"$mail.Display()",
 							subject.replace("'", "''"),
 							body.replace("'", "''"),
+							emailTo.replace("'", "''"),
+							emailCc.replace("'", "''"),
 							tempFile.getAbsolutePath().replace("\\", "\\\\")
 						);
 						
@@ -587,13 +599,24 @@ public class PostmanApp extends JFrame {
 				// Linux/Unix: Use Thunderbird
 				else if (osName.contains("nix") || osName.contains("nux") || osName.contains("aix")) {
 					try {
+						// Build compose command with to and cc
+						StringBuilder composeStr = new StringBuilder();
+						composeStr.append(String.format("subject='%s',body='%s',attachment='file://%s'",
+							subject.replace("'", "\\'"),
+							body.replace("'", "\\'"),
+							tempFile.getAbsolutePath()));
+						
+						if (!emailTo.isEmpty()) {
+							composeStr.append(",to='").append(emailTo.replace("'", "\\'")).append("'");
+						}
+						if (!emailCc.isEmpty()) {
+							composeStr.append(",cc='").append(emailCc.replace("'", "\\'")).append("'");
+						}
+						
 						ProcessBuilder pb = new ProcessBuilder(
 							"thunderbird",
 							"-compose",
-							String.format("subject='%s',body='%s',attachment='file://%s'",
-								subject.replace("'", "\\'"),
-								body.replace("'", "\\'"),
-								tempFile.getAbsolutePath())
+							composeStr.toString()
 						);
 						pb.start();
 						success = true;
