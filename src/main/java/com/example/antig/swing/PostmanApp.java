@@ -1541,6 +1541,11 @@ public class PostmanApp extends JFrame {
 			System.exit(1);
 		}
 
+		// Configure SLF4J Simple
+		System.setProperty("org.slf4j.simpleLogger.logFile", "System.out");
+		System.setProperty("org.slf4j.simpleLogger.showDateTime", "true");
+		System.setProperty("org.slf4j.simpleLogger.dateTimeFormat", "HH:mm:ss.SSS");
+
 		try {
 			// Load theme preference
 			RecentProjectsManager tempManager = new RecentProjectsManager();
@@ -1575,9 +1580,11 @@ public class PostmanApp extends JFrame {
 	}
 
 	private void initConsole() {
-		java.io.PrintStream printStream = new java.io.PrintStream(new ConsoleOutputStream(consoleTextArea));
-		System.setOut(printStream);
-		System.setErr(printStream);
+		java.io.PrintStream originalOut = System.out;
+		java.io.PrintStream originalErr = System.err;
+		
+		System.setOut(new java.io.PrintStream(new ConsoleOutputStream(consoleTextArea, originalOut)));
+		System.setErr(new java.io.PrintStream(new ConsoleOutputStream(consoleTextArea, originalErr)));
 	}
 
 	private void toggleConsole() {
@@ -1634,13 +1641,16 @@ public class PostmanApp extends JFrame {
 
 	private class ConsoleOutputStream extends java.io.OutputStream {
 		private final JTextArea textArea;
+		private final java.io.OutputStream target;
 
-		public ConsoleOutputStream(JTextArea textArea) {
+		public ConsoleOutputStream(JTextArea textArea, java.io.OutputStream target) {
 			this.textArea = textArea;
+			this.target = target;
 		}
 
 		@Override
 		public void write(int b) throws java.io.IOException {
+			target.write(b);
 			SwingUtilities.invokeLater(() -> {
 				textArea.append(String.valueOf((char) b));
 				textArea.setCaretPosition(textArea.getDocument().getLength());
@@ -1649,11 +1659,17 @@ public class PostmanApp extends JFrame {
 
 		@Override
 		public void write(byte[] b, int off, int len) throws java.io.IOException {
+			target.write(b, off, len);
 			String s = new String(b, off, len);
 			SwingUtilities.invokeLater(() -> {
 				textArea.append(s);
 				textArea.setCaretPosition(textArea.getDocument().getLength());
 			});
+		}
+		
+		@Override
+		public void flush() throws java.io.IOException {
+			target.flush();
 		}
 	}
 }
