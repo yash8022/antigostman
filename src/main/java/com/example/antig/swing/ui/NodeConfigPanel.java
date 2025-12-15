@@ -890,6 +890,14 @@ public class NodeConfigPanel extends JPanel {
 				fileChooser.setCurrentDirectory(new File(lastDir));
 			}
 		}
+		
+		// Generate smart filename if this is the response body
+		if (textArea == responseBodyArea) {
+			String timestamp = new java.text.SimpleDateFormat("yyyyMMdd-HHmmss").format(new java.util.Date());
+			String extension = detectFileExtension(textArea.getText(), textArea.getSyntaxEditingStyle());
+			String suggestedName = timestamp + extension;
+			fileChooser.setSelectedFile(new File(fileChooser.getCurrentDirectory(), suggestedName));
+		}
 
 		if (fileChooser.showSaveDialog(this) == JFileChooser.APPROVE_OPTION) {
 			File file = fileChooser.getSelectedFile();
@@ -910,5 +918,55 @@ public class NodeConfigPanel extends JPanel {
 				JOptionPane.showMessageDialog(this, "Error saving file: " + e.getMessage());
 			}
 		}
+	}
+	
+	private String detectFileExtension(String content, String syntaxStyle) {
+		// Check syntax highlighting style first
+		if (syntaxStyle != null) {
+			if (syntaxStyle.contains("json")) {
+				return ".json";
+			} else if (syntaxStyle.contains("xml") || syntaxStyle.contains("html")) {
+				return ".xml";
+			} else if (syntaxStyle.contains("javascript")) {
+				return ".js";
+			} else if (syntaxStyle.contains("css")) {
+				return ".css";
+			}
+		}
+		
+		// Fallback: detect from content
+		if (content != null && !content.trim().isEmpty()) {
+			String trimmed = content.trim();
+			
+			// JSON detection
+			if ((trimmed.startsWith("{") && trimmed.endsWith("}")) || 
+			    (trimmed.startsWith("[") && trimmed.endsWith("]"))) {
+				return ".json";
+			}
+			
+			// XML/HTML detection
+			if (trimmed.startsWith("<") && trimmed.endsWith(">")) {
+				if (trimmed.toLowerCase().contains("<!doctype html") || 
+				    trimmed.toLowerCase().contains("<html")) {
+					return ".html";
+				}
+				return ".xml";
+			}
+			
+			// CSV detection (simple heuristic: has commas on most lines)
+			String[] lines = trimmed.split("\n");
+			if (lines.length > 1) {
+				int commaLines = 0;
+				for (String line : lines) {
+					if (line.contains(",")) commaLines++;
+				}
+				if (commaLines > lines.length / 2) {
+					return ".csv";
+				}
+			}
+		}
+		
+		// Default to .txt
+		return ".txt";
 	}
 }
