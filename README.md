@@ -47,7 +47,7 @@
 
 ## 🛠️ Technology Stack
 
-*   **Language**: Java 21
+*   **Language**: Java 17
 *   **UI Framework**: Swing
 *   **Networking**: `java.net.http.HttpClient`
 *   **Build Tool**: Maven
@@ -62,7 +62,7 @@
 ## 📦 Installation & Usage
 
 ### Prerequisites
-*   Java JDK 21 or higher
+*   Java JDK 17 or higher
 *   Maven
 
 ### Build

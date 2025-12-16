@@ -74,7 +74,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-public class PostmanApp extends JFrame {
+public class Antigostman extends JFrame {
 
 	private final HttpClientService httpClientService;
 	private final ProjectService projectService;
@@ -125,7 +125,7 @@ public class PostmanApp extends JFrame {
 	private long lastExecutionDuration; // Duration in milliseconds
 	private int consoleStartOffset = 0; // To track log start for current request
 
-	public PostmanApp() throws KeyManagementException, NoSuchAlgorithmException {
+	public Antigostman() throws KeyManagementException, NoSuchAlgorithmException {
 		this.httpClientService = new HttpClientService();
 		this.projectService = new ProjectService();
 		this.recentProjectsManager = new RecentProjectsManager();
@@ -1203,7 +1203,7 @@ public class PostmanApp extends JFrame {
 											java.awt.Desktop.getDesktop().open(tempFile);
 										} catch (Exception ex) {
 											ex.printStackTrace();
-											JOptionPane.showMessageDialog(PostmanApp.this, "Failed to open file: " + ex.getMessage());
+											JOptionPane.showMessageDialog(Antigostman.this, "Failed to open file: " + ex.getMessage());
 										}
 									});
 								}
@@ -1988,7 +1988,7 @@ public class PostmanApp extends JFrame {
 		}
 		SwingUtilities.invokeLater(() -> {
 			try {
-				PostmanApp app = new PostmanApp();
+				Antigostman app = new Antigostman();
 				app.setExtendedState(JFrame.MAXIMIZED_BOTH);
 				app.setVisible(true);
 

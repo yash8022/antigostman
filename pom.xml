@@ -12,7 +12,7 @@
 	<artifactId>antigostman</artifactId>
 	<version>1.2-SNAPSHOT</version>
 	<properties>
-		<java.version>21</java.version>
+		<java.version>17</java.version>
 	</properties>
 	<dependencies>
 		<dependency>
