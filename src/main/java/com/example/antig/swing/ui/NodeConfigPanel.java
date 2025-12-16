@@ -82,7 +82,12 @@ public class NodeConfigPanel extends JPanel {
 	private RecentProjectsManager recentProjectsManager;
 	private Runnable pdfGenerator;
 	private Runnable pdfEmailSender;
+	private Runnable onExecuteRequest;
 	private boolean isLoading = false;
+	
+	public void setOnExecuteRequest(Runnable onExecuteRequest) {
+		this.onExecuteRequest = onExecuteRequest;
+	}
 	
 	public void setPdfGenerator(Runnable pdfGenerator) {
 		this.pdfGenerator = pdfGenerator;
@@ -193,7 +198,20 @@ public class NodeConfigPanel extends JPanel {
 				saveNode();
 			}
 		});
+		bindExecutionShortcut(area);
 		return area;
+	}
+
+	private void bindExecutionShortcut(javax.swing.JComponent component) {
+		component.getInputMap().put(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_ENTER, java.awt.event.InputEvent.CTRL_DOWN_MASK), "executeRequest");
+		component.getActionMap().put("executeRequest", new javax.swing.AbstractAction() {
+			@Override
+			public void actionPerformed(java.awt.event.ActionEvent e) {
+				if (onExecuteRequest != null) {
+					onExecuteRequest.run();
+				}
+			}
+		});
 	}
 
 	/**
@@ -276,6 +294,7 @@ public class NodeConfigPanel extends JPanel {
 			}
 		});
 
+		bindExecutionShortcut(textArea);
 		return textArea;
 	}
 
@@ -355,6 +374,7 @@ public class NodeConfigPanel extends JPanel {
 				saveNode();
 			}
 		});
+		bindExecutionShortcut(textArea);
 		return textArea;
 	}
 
@@ -540,6 +560,7 @@ public class NodeConfigPanel extends JPanel {
 					emailToArea = new JTextArea(3, 40);
 					emailToArea.setLineWrap(true);
 					emailToArea.setWrapStyleWord(true);
+					bindExecutionShortcut(emailToArea);
 					formPanel.add(new JScrollPane(emailToArea), gbc);
 					
 					// Email CC
@@ -556,6 +577,7 @@ public class NodeConfigPanel extends JPanel {
 					emailCcArea = new JTextArea(3, 40);
 					emailCcArea.setLineWrap(true);
 					emailCcArea.setWrapStyleWord(true);
+					bindExecutionShortcut(emailCcArea);
 					formPanel.add(new JScrollPane(emailCcArea), gbc);
 					
 					settingsPanel.add(formPanel, BorderLayout.NORTH);

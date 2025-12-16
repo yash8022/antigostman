@@ -66,7 +66,7 @@ public class PdfReportService {
 		addHeadersTable(document, requestHeaders);
 
 		addSubHeader(document, "Body");
-		addCodeBlock(document, requestBody);
+		addCodeBlock(document, formatBody(requestBody));
 
 		// Spacer
 		document.add(Chunk.NEWLINE);
@@ -86,7 +86,7 @@ public class PdfReportService {
 			addHeadersTable(document, respHeaders);
 
 			addSubHeader(document, "Body");
-			addCodeBlock(document, response.body());
+			addCodeBlock(document, formatBody(response.body()));
 		}
 		
 		if (exception != null) {
@@ -268,6 +268,50 @@ public class PdfReportService {
 		}
 
 		document.add(table);
+	}
+
+
+
+	private String formatBody(String content) {
+		if (content == null || content.isBlank()) {
+			return content;
+		}
+		String trimmed = content.trim();
+		// JSON detection
+		if ((trimmed.startsWith("{") && trimmed.endsWith("}")) || (trimmed.startsWith("[") && trimmed.endsWith("]"))) {
+			try {
+				com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+				Object json = mapper.readValue(content, Object.class);
+				return mapper.writerWithDefaultPrettyPrinter().writeValueAsString(json);
+			} catch (Exception e) {
+				// Not valid JSON or error parsing, return original
+				return content;
+			}
+		} 
+		// XML detection
+		else if (trimmed.startsWith("<") && trimmed.endsWith(">")) {
+			try {
+				javax.xml.parsers.DocumentBuilderFactory dbf = javax.xml.parsers.DocumentBuilderFactory.newInstance();
+				dbf.setValidating(false);
+				// Prevent XXE
+				dbf.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
+				javax.xml.parsers.DocumentBuilder db = dbf.newDocumentBuilder();
+				org.w3c.dom.Document doc = db.parse(new org.xml.sax.InputSource(new java.io.StringReader(content)));
+				
+				javax.xml.transform.Transformer tf = javax.xml.transform.TransformerFactory.newInstance().newTransformer();
+				tf.setOutputProperty(javax.xml.transform.OutputKeys.ENCODING, "UTF-8");
+				tf.setOutputProperty(javax.xml.transform.OutputKeys.INDENT, "yes");
+				tf.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "2");
+				
+				java.io.StringWriter writer = new java.io.StringWriter();
+				tf.transform(new javax.xml.transform.dom.DOMSource(doc), new javax.xml.transform.stream.StreamResult(writer));
+				return writer.toString();
+			} catch (Exception e) {
+				 // Not valid XML or error parsing, return original
+				 return content;
+			}
+		}
+		return content;
 	}
 
 	private void addCodeBlock(Document document, String content) throws DocumentException {

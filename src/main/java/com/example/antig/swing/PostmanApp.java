@@ -11,7 +11,9 @@ import java.awt.event.MouseEvent;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.PrintWriter;
+import java.net.URI;
 import java.net.URLEncoder;
+import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.security.KeyManagementException;
@@ -101,6 +103,7 @@ public class PostmanApp extends JFrame {
 	private JButton sendButton;
 	private JButton pdfButton; // New PDF Button
 	private JCheckBox pdfOpenCheckbox; // New Checkbox
+	private JCheckBox dlContentCheckbox; // New DL Content Checkbox
 	private JPanel requestToolbar;
 
 	private PostmanNode currentNode;
@@ -289,6 +292,7 @@ public class PostmanApp extends JFrame {
 		// nodeConfigPanel.setAutoSaveCallback(this::autoSaveProject); // Autosave
 		// disabled
 		nodeConfigPanel.setRecentProjectsManager(recentProjectsManager);
+		nodeConfigPanel.setOnExecuteRequest(this::sendRequest);
 		rightPanel.add(nodeConfigPanel, BorderLayout.CENTER);
 
 		mainSplitPane.setRightComponent(rightPanel);
@@ -312,7 +316,7 @@ public class PostmanApp extends JFrame {
 			}
 		});
 		JPanel consolePanel = new JPanel(new BorderLayout());
-		
+
 		JPanel consoleToolbar = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 0)); // Compact toolbar
 		consoleToolbar.setBorder(BorderFactory.createEmptyBorder(2, 2, 2, 2));
 		JButton clearConsoleButton = new JButton("Clear");
@@ -322,10 +326,10 @@ public class PostmanApp extends JFrame {
 		clearConsoleButton.setMargin(new java.awt.Insets(2, 5, 2, 5));
 		clearConsoleButton.setFocusable(false);
 		consoleToolbar.add(clearConsoleButton);
-		
+
 		consolePanel.add(consoleToolbar, BorderLayout.NORTH);
 		consolePanel.add(new JScrollPane(consoleTextArea), BorderLayout.CENTER);
-		
+
 		consoleTabbedPane.addTab("Console", consolePanel);
 
 		// Vertical Split Pane
@@ -410,6 +414,16 @@ public class PostmanApp extends JFrame {
 				}
 			}
 		});
+		// Bind Ctrl+Enter to send request
+		urlField.getInputMap().put(
+				javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_ENTER, java.awt.event.InputEvent.CTRL_DOWN_MASK),
+				"sendRequest");
+		urlField.getActionMap().put("sendRequest", new javax.swing.AbstractAction() {
+			@Override
+			public void actionPerformed(java.awt.event.ActionEvent e) {
+				sendRequest();
+			}
+		});
 
 		sendButton = new JButton("Send");
 		sendButton.addActionListener(e -> sendRequest());
@@ -460,6 +474,12 @@ public class PostmanApp extends JFrame {
 		toolbar.add(urlField, BorderLayout.CENTER);
 
 		JPanel rightPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
+
+		dlContentCheckbox = new JCheckBox("DL Content");
+		dlContentCheckbox.setToolTipText("Download response as file and open it");
+		rightPanel.add(dlContentCheckbox);
+		rightPanel.add(Box.createHorizontalStrut(5));
+
 		rightPanel.add(timeoutSpinner);
 		rightPanel.add(Box.createHorizontalStrut(5));
 		rightPanel.add(sendButton);
@@ -517,7 +537,7 @@ public class PostmanApp extends JFrame {
 			JOptionPane.showMessageDialog(this, "Error generating report: " + e.getMessage());
 		}
 	}
-	
+
 	private void emailPdfReport() {
 		if (!(currentNode instanceof PostmanRequest)) {
 			return;
@@ -554,8 +574,9 @@ public class PostmanApp extends JFrame {
 			if (tempFile.exists()) {
 				String osName = System.getProperty("os.name").toLowerCase();
 				String subject = "Rapport de test - " + projectName + " - " + req.getName();
-				String body = "Bonjour,\n\nJe vous prie de trouver ci-joint le rapport de test.\n\nProjet : " + projectName + "\nTest : " + req.getName() + "\n\nCordialement.";
-				
+				String body = "Bonjour,\n\nJe vous prie de trouver ci-joint le rapport de test.\n\nProjet : " + projectName
+						+ "\nTest : " + req.getName() + "\n\nCordialement.";
+
 				// Get email recipients from settings
 				String emailTo = "";
 				String emailCc = "";
@@ -563,33 +584,20 @@ public class PostmanApp extends JFrame {
 					emailTo = rootCollection.getEmailReportTo() != null ? rootCollection.getEmailReportTo() : "";
 					emailCc = rootCollection.getEmailReportCc() != null ? rootCollection.getEmailReportCc() : "";
 				}
-				
+
 				boolean success = false;
-				
+
 				// Windows: Use Outlook via PowerShell
 				if (osName.contains("win")) {
 					try {
 						String powershellScript = String.format(
-							"$outlook = New-Object -ComObject Outlook.Application;" +
-							"$mail = $outlook.CreateItem(0);" +
-							"$mail.Subject = '%s';" +
-							"$mail.Body = '%s';" +
-							"$mail.To = '%s';" +
-							"$mail.CC = '%s';" +
-							"$mail.Attachments.Add('%s');" +
-							"$mail.Display()",
-							subject.replace("'", "''"),
-							body.replace("'", "''"),
-							emailTo.replace("'", "''"),
-							emailCc.replace("'", "''"),
-							tempFile.getAbsolutePath().replace("\\", "\\\\")
-						);
-						
-						ProcessBuilder pb = new ProcessBuilder(
-							"powershell.exe",
-							"-Command",
-							powershellScript
-						);
+								"$outlook = New-Object -ComObject Outlook.Application;" + "$mail = $outlook.CreateItem(0);"
+										+ "$mail.Subject = '%s';" + "$mail.Body = '%s';" + "$mail.To = '%s';" + "$mail.CC = '%s';"
+										+ "$mail.Attachments.Add('%s');" + "$mail.Display()",
+								subject.replace("'", "''"), body.replace("'", "''"), emailTo.replace("'", "''"),
+								emailCc.replace("'", "''"), tempFile.getAbsolutePath().replace("\\", "\\\\"));
+
+						ProcessBuilder pb = new ProcessBuilder("powershell.exe", "-Command", powershellScript);
 						pb.start();
 						success = true;
 					} catch (Exception e) {
@@ -602,51 +610,42 @@ public class PostmanApp extends JFrame {
 						// Build compose command with to and cc
 						StringBuilder composeStr = new StringBuilder();
 						composeStr.append(String.format("subject='%s',body='%s',attachment='file://%s'",
-							subject.replace("'", "\\'"),
-							body.replace("'", "\\'"),
-							tempFile.getAbsolutePath()));
-						
+								subject.replace("'", "\\'"), body.replace("'", "\\'"), tempFile.getAbsolutePath()));
+
 						if (!emailTo.isEmpty()) {
 							composeStr.append(",to='").append(emailTo.replace("'", "\\'")).append("'");
 						}
 						if (!emailCc.isEmpty()) {
 							composeStr.append(",cc='").append(emailCc.replace("'", "\\'")).append("'");
 						}
-						
-						ProcessBuilder pb = new ProcessBuilder(
-							"thunderbird",
-							"-compose",
-							composeStr.toString()
-						);
+
+						ProcessBuilder pb = new ProcessBuilder("thunderbird", "-compose", composeStr.toString());
 						pb.start();
 						success = true;
 					} catch (Exception e) {
 						System.err.println("Thunderbird command failed: " + e.getMessage());
 					}
 				}
-				
+
 				// Fallback: use Desktop API (without attachment)
 				if (!success && java.awt.Desktop.isDesktopSupported()) {
 					java.awt.Desktop desktop = java.awt.Desktop.getDesktop();
-					
+
 					// Create mailto URI
-					String mailto = String.format("mailto:?subject=%s&body=%s",
-							java.net.URLEncoder.encode(subject, "UTF-8"),
+					String mailto = String.format("mailto:?subject=%s&body=%s", java.net.URLEncoder.encode(subject, "UTF-8"),
 							java.net.URLEncoder.encode(body, "UTF-8"));
-					
+
 					desktop.browse(new java.net.URI(mailto));
-					
+
 					// Also open the PDF so user can easily attach it
 					desktop.open(tempFile);
-					
+
 					JOptionPane.showMessageDialog(this,
 							"Email client opened with subject and body.\nPlease attach the PDF file that was opened.",
-							"Email Prepared",
-							JOptionPane.INFORMATION_MESSAGE);
+							"Email Prepared", JOptionPane.INFORMATION_MESSAGE);
 				} else if (!success) {
 					JOptionPane.showMessageDialog(this,
-							"Could not open email client.\nPDF saved at: " + tempFile.getAbsolutePath(),
-							"Error",
+							"Could not open email client.\nPDF saved at: " + tempFile.getAbsolutePath(), "Error",
 							JOptionPane.ERROR_MESSAGE);
 				}
 			}
@@ -1033,7 +1032,7 @@ public class PostmanApp extends JFrame {
 
 		// Capture start offset of console for this request
 		consoleStartOffset = consoleTextArea.getDocument().getLength();
-		
+
 		// Reset transient state to avoid "stale" data from previous success
 		lastExecutionResponse = null;
 		lastExecutionException = null;
@@ -1042,217 +1041,350 @@ public class PostmanApp extends JFrame {
 		lastExecutionConsoleLog = null;
 		lastExecutionDuration = 0;
 
-			try {
-				// 1. Initial Environment
+		try {
+			// 1. Initial Environment
 
-				Map<String, Object> variables = createVariableMap(req);
+			Map<String, Object> variables = createVariableMap(req);
 
-				// 2. Script Engine Setup
-				ScriptEngine engine = new ScriptEngineManager().getEngineByName("nashorn");
-				if (engine == null) {
-					// Fallback if nashorn is not found (e.g. newer Java versions without
-					// dependency)
-					engine = new ScriptEngineManager().getEngineByName("js");
-				}
+			// 2. Script Engine Setup
+			ScriptEngine engine = new ScriptEngineManager().getEngineByName("nashorn");
+			if (engine == null) {
+				// Fallback if nashorn is not found (e.g. newer Java versions without
+				// dependency)
+				engine = new ScriptEngineManager().getEngineByName("js");
+			}
 
-				if (engine == null) {
-					JOptionPane.showMessageDialog(this,
-							"JavaScript engine not found. Please ensure Nashorn or GraalJS is available.");
+			if (engine == null) {
+				JOptionPane.showMessageDialog(this,
+						"JavaScript engine not found. Please ensure Nashorn or GraalJS is available.");
+				// Record as exception
+				lastExecutionException = new RuntimeException("JavaScript engine not found.");
+				captureConsoleLog();
+				return;
+			}
+
+			ScriptEngine fEngine = engine;
+
+			for (String k : variables.keySet()) {
+				fEngine.put(k, variables.get(k));
+			}
+
+			String prescript = createPrescript(req);
+
+			if (prescript != null && !prescript.trim().isEmpty()) {
+				try {
+					fEngine.eval(prescript);
+				} catch (Exception e) {
+					log.error("Prescript error", e);
+					nodeConfigPanel.getResponseArea().setText("Prescript Error: " + e.getMessage());
+					nodeConfigPanel.setResponseBodySyntax(SyntaxConstants.SYNTAX_STYLE_NONE);
 					// Record as exception
-					lastExecutionException = new RuntimeException("JavaScript engine not found.");
+					lastExecutionException = e;
 					captureConsoleLog();
 					return;
 				}
+			}
 
-				ScriptEngine fEngine = engine;
+			// 4. Prepare Request (using potentially modified env)
+			Map<String, String> headers = createHeaders(currentNode, variables, true);
 
-				for (String k : variables.keySet()) {
-					fEngine.put(k, variables.get(k));
-				}
+			// 5. Body Formatting & Content-Type
+			String bodyType = req.getBodyType() != null ? req.getBodyType() : "TEXT";
+			String bodyToSend = req.getBody();
 
-				String prescript = createPrescript(req);
-
-				if (prescript != null && !prescript.trim().isEmpty()) {
-					try {
-						fEngine.eval(prescript);
-					} catch (Exception e) {
-						log.error("Prescript error", e);
-						nodeConfigPanel.getResponseArea().setText("Prescript Error: " + e.getMessage());
-						nodeConfigPanel.setResponseBodySyntax(SyntaxConstants.SYNTAX_STYLE_NONE);
-						// Record as exception
-						lastExecutionException = e;
-						captureConsoleLog();
-						return;
+			if ("FORM ENCODED".equalsIgnoreCase(bodyType)) {
+				// Parse properties to map and convert to URL encoded
+				Map<String, String> formParams = parseProperties(bodyToSend);
+				StringBuilder encoded = new StringBuilder();
+				for (Map.Entry<String, String> entry : formParams.entrySet()) {
+					if (encoded.length() > 0) {
+						encoded.append("&");
+					}
+					encoded.append(URLEncoder.encode(entry.getKey(), StandardCharsets.UTF_8));
+					if (entry.getValue() != null) {
+						encoded.append("=").append(URLEncoder.encode(entry.getValue(), StandardCharsets.UTF_8));
 					}
 				}
+				bodyToSend = encoded.toString();
+				headers.put("Content-Type", "application/x-www-form-urlencoded");
+			} else if ("JSON".equalsIgnoreCase(bodyType)) {
+				headers.put("Content-Type", "application/json");
+			} else if ("XML".equalsIgnoreCase(bodyType)) {
+				headers.put("Content-Type", "application/xml");
+			} else if ("TEXT".equalsIgnoreCase(bodyType)) {
+				headers.put("Content-Type", "text/plain");
+			}
 
-				// 4. Prepare Request (using potentially modified env)
-				Map<String, String> headers = createHeaders(currentNode, variables, true);
+			// 6. Send Request
+			// nodeConfigPanel.selectExecutionTab();
+			sendButton.setEnabled(false);
+			nodeConfigPanel.getResponseArea().setText("Sending request...");
+			nodeConfigPanel.setResponseBodySyntax(SyntaxConstants.SYNTAX_STYLE_NONE);
 
-				// 5. Body Formatting & Content-Type
-				String bodyType = req.getBodyType() != null ? req.getBodyType() : "TEXT";
-				String bodyToSend = req.getBody();
+			String finalBody = bodyToSend;
+			Map<String, String> finalHeaders = headers;
 
-				if ("FORM ENCODED".equalsIgnoreCase(bodyType)) {
-					// Parse properties to map and convert to URL encoded
-					Map<String, String> formParams = parseProperties(bodyToSend);
-					StringBuilder encoded = new StringBuilder();
-					for (Map.Entry<String, String> entry : formParams.entrySet()) {
-						if (encoded.length() > 0) {
-							encoded.append("&");
+			long startTime = System.currentTimeMillis();
+
+			SwingWorker<HttpResponse<String>, Void> worker = new SwingWorker<>() {
+				@Override
+				protected HttpResponse<String> doInBackground() throws Exception {
+
+					String url = parse(req.getUrl(), variables);
+					String body = parse(finalBody, variables);
+
+					System.out.println("> " + url);
+
+					if (dlContentCheckbox.isSelected()) {
+						// Binary download mode
+						HttpResponse<byte[]> binaryResp = httpClientService.sendRequestBytes(url, req.getMethod(), body,
+								finalHeaders, req.getTimeout(), req.getHttpVersion());
+
+						// Check if successful before processing file
+						if (binaryResp.body() != null && binaryResp.body().length > 0) {
+							try {
+								// Detect type
+								org.apache.tika.Tika tika = new org.apache.tika.Tika();
+								String mimeType = tika.detect(binaryResp.body());
+								String ext = ".bin"; // Default
+								try {
+									org.apache.tika.mime.MimeTypes allTypes = org.apache.tika.mime.MimeTypes.getDefaultMimeTypes();
+									org.apache.tika.mime.MimeType type = allTypes.forName(mimeType);
+									ext = type.getExtension();
+									if (ext == null || ext.isEmpty()) {
+										ext = ".bin";
+									}
+								} catch (Exception ex) {
+									// Fallback extension detection
+									if (mimeType.contains("pdf")) {
+										ext = ".pdf";
+									} else if (mimeType.contains("json")) {
+										ext = ".json";
+									} else if (mimeType.contains("xml")) {
+										ext = ".xml";
+									} else if (mimeType.contains("html")) {
+										ext = ".html";
+									} else if (mimeType.contains("text")) {
+										ext = ".txt";
+									} else if (mimeType.contains("image/png")) {
+										ext = ".png";
+									} else if (mimeType.contains("image/jpeg")) {
+										ext = ".jpg";
+									}
+								}
+
+								File tempFile = File.createTempFile("antig_download_" + System.currentTimeMillis() + "_", ext);
+								java.nio.file.Files.write(tempFile.toPath(), binaryResp.body());
+
+								System.out.println("Saved download to: " + tempFile.getAbsolutePath());
+
+								// Open file
+								if (java.awt.Desktop.isDesktopSupported()) {
+									SwingUtilities.invokeLater(() -> {
+										try {
+											java.awt.Desktop.getDesktop().open(tempFile);
+										} catch (Exception ex) {
+											ex.printStackTrace();
+											JOptionPane.showMessageDialog(PostmanApp.this, "Failed to open file: " + ex.getMessage());
+										}
+									});
+								}
+							} catch (Exception ex) {
+								ex.printStackTrace();
+								System.err.println("Failed to save/open download: " + ex.getMessage());
+							}
 						}
-						encoded.append(URLEncoder.encode(entry.getKey(), StandardCharsets.UTF_8));
-						if (entry.getValue() != null) {
-							encoded.append("=").append(URLEncoder.encode(entry.getValue(), StandardCharsets.UTF_8));
+
+						// Convert back to String based response for UI compatibility (pseudo-response)
+						// We construct a fake string response so the rest of the logic (logging, UI
+						// update) works
+						// We interpret bytes as UTF-8 for display, or summary if too large
+						String stringBody = "";
+						if (binaryResp.body() != null) {
+							if (binaryResp.body().length < 100000) {
+								stringBody = new String(binaryResp.body(), StandardCharsets.UTF_8);
+							} else {
+								stringBody = "[Binary content size: " + binaryResp.body().length + " bytes]";
+							}
 						}
-					}
-					bodyToSend = encoded.toString();
-					headers.put("Content-Type", "application/x-www-form-urlencoded");
-				} else if ("JSON".equalsIgnoreCase(bodyType)) {
-					headers.put("Content-Type", "application/json");
-				} else if ("XML".equalsIgnoreCase(bodyType)) {
-					headers.put("Content-Type", "application/xml");
-				} else if ("TEXT".equalsIgnoreCase(bodyType)) {
-					headers.put("Content-Type", "text/plain");
-				}
 
-				// 6. Send Request
-				// nodeConfigPanel.selectExecutionTab();
-				sendButton.setEnabled(false);
-				nodeConfigPanel.getResponseArea().setText("Sending request...");
-				nodeConfigPanel.setResponseBodySyntax(SyntaxConstants.SYNTAX_STYLE_NONE);
+						// Hack to adapt HttpResponse<byte[]> to HttpResponse<String> is hard because
+						// HttpResponse is an interface
+						// and we can't easily mock it without a library or custom class.
+						// So we will just call the string version again for the UI? No, that triggers
+						// double request.
+						// Better: Return a dummy HttpResponse<String> if we can, or refactor.
+						// For now, let's just make a simple wrapper or rely on the fact that we can't
+						// easily change the return type of doInBackground here
+						// without changing the SwingWorker type.
 
-				String finalBody = bodyToSend;
-				Map<String, String> finalHeaders = headers;
+						// The SwingWorker is typed <HttpResponse<String>, Void>.
+						// We MUST return HttpResponse<String>.
+						// We already consumed the stream in sendRequestBytes.
+						// We can implement a simple wrapper.
 
-				long startTime = System.currentTimeMillis();
+						final String bodyStr = stringBody;
+						return new HttpResponse<String>() {
+							@Override
+							public int statusCode() {
+								return binaryResp.statusCode();
+							}
 
-				SwingWorker<HttpResponse<String>, Void> worker = new SwingWorker<>() {
-					@Override
-					protected HttpResponse<String> doInBackground() throws Exception {
+							@Override
+							public HttpRequest request() {
+								return binaryResp.request();
+							}
 
-						String url = parse(req.getUrl(), variables);
-						String body = parse(finalBody, variables);
+							@Override
+							public java.util.Optional<HttpResponse<String>> previousResponse() {
+								return java.util.Optional.empty();
+							} // Generics mismatch, ignore
 
-						System.out.println("> " + url);
+							@Override
+							public java.net.http.HttpHeaders headers() {
+								return binaryResp.headers();
+							}
 
+							@Override
+							public String body() {
+								return bodyStr;
+							}
+
+							@Override
+							public java.util.Optional<javax.net.ssl.SSLSession> sslSession() {
+								return binaryResp.sslSession();
+							}
+
+							@Override
+							public URI uri() {
+								return binaryResp.uri();
+							}
+
+							@Override
+							public java.net.http.HttpClient.Version version() {
+								return binaryResp.version();
+							}
+						};
+
+					} else {
 						return httpClientService.sendRequest(url, req.getMethod(), body, finalHeaders, req.getTimeout(),
 								req.getHttpVersion());
 					}
+				}
 
-					@Override
-					protected void done() {
-						// Display Request in execution tabs (always, even on error)
-						// Request Headers
-						StringBuilder reqHeadersSb = new StringBuilder();
-						finalHeaders.forEach((k, v) -> reqHeadersSb.append(k).append(": ").append(v).append("\n"));
-						nodeConfigPanel.setRequestHeaders(reqHeadersSb.toString());
+				@Override
+				protected void done() {
+					// Display Request in execution tabs (always, even on error)
+					// Request Headers
+					StringBuilder reqHeadersSb = new StringBuilder();
+					finalHeaders.forEach((k, v) -> reqHeadersSb.append(k).append(": ").append(v).append("\n"));
+					nodeConfigPanel.setRequestHeaders(reqHeadersSb.toString());
 
-						// Request Body
-						nodeConfigPanel.setRequestBody(finalBody != null ? finalBody : "");
+					// Request Body
+					nodeConfigPanel.setRequestBody(finalBody != null ? finalBody : "");
 
-						HttpResponse<String> response = null;
-						Exception executionException = null;
+					HttpResponse<String> response = null;
+					Exception executionException = null;
 
+					try {
 						try {
+							response = get();
+						} catch (Exception ex) {
+							ex.printStackTrace();
+							executionException = ex;
+						}
+
+						// 7. Postscript (Run even if request failed)
+						if (response != null) {
+							fEngine.put("response", response);
+						}
+
+						String postscript = createPostscript(req);
+
+						if (postscript != null && !postscript.trim().isEmpty()) {
 							try {
-								response = get();
+								fEngine.eval(postscript);
 							} catch (Exception ex) {
 								ex.printStackTrace();
-								executionException = ex;
+								nodeConfigPanel.getResponseArea().append("\n\n[Postscript Error] " + ex.getMessage());
 							}
-
-							// 7. Postscript (Run even if request failed)
-							if (response != null) {
-								fEngine.put("response", response);
-							}
-
-							String postscript = createPostscript(req);
-
-							if (postscript != null && !postscript.trim().isEmpty()) {
-								try {
-									fEngine.eval(postscript);
-								} catch (Exception ex) {
-									ex.printStackTrace();
-									nodeConfigPanel.getResponseArea().append("\n\n[Postscript Error] " + ex.getMessage());
-								}
-							}
-
-							// 8. Display Response or Error
-							if (response != null) {
-								// Response Headers
-								StringBuilder respHeadersSb = new StringBuilder();
-								respHeadersSb.append("Status: ").append(response.statusCode()).append("\n\n");
-								response.headers().map()
-										.forEach((k, v) -> respHeadersSb.append(k).append(": ").append(v).append("\n"));
-								nodeConfigPanel.setResponseHeaders(respHeadersSb.toString());
-
-								// Response Body (with JSON formatting if applicable)
-								String responseBody;
-								String syntaxStyle = SyntaxConstants.SYNTAX_STYLE_NONE;
-
-								// Determine syntax from Content-Type header
-								String contentType = response.headers().firstValue("Content-Type").orElse("").toLowerCase();
-								if (contentType.contains("json")) {
-									syntaxStyle = SyntaxConstants.SYNTAX_STYLE_JSON;
-								} else if (contentType.contains("xml")) {
-									syntaxStyle = SyntaxConstants.SYNTAX_STYLE_XML;
-								} else if (contentType.contains("html")) {
-									syntaxStyle = SyntaxConstants.SYNTAX_STYLE_HTML;
-								}
-
-								try {
-									Object json = objectMapper.readValue(response.body(), Object.class);
-									responseBody = objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(json);
-									// If parsing succeeded, it is JSON
-									syntaxStyle = SyntaxConstants.SYNTAX_STYLE_JSON;
-								} catch (Exception e) {
-									responseBody = response.body();
-								}
-								nodeConfigPanel.setResponseBody(responseBody);
-								nodeConfigPanel.setResponseBodySyntax(syntaxStyle);
-
-								// Also set the old responseArea (now just shows response body since we have
-								// separate tabs)
-								nodeConfigPanel.getResponseArea().setText(responseBody);
-							} else if (executionException != null) {
-								String errorMsg = "Error: " + executionException.getMessage();
-								nodeConfigPanel.setResponseBody(errorMsg);
-								nodeConfigPanel.setResponseBodySyntax(SyntaxConstants.SYNTAX_STYLE_NONE);
-								nodeConfigPanel.getResponseArea().setText(errorMsg);
-								executionException.printStackTrace();
-							}
-						} finally {
-							long endTime = System.currentTimeMillis();
-							long duration = endTime - startTime;
-							
-							sendButton.setEnabled(true);
-							sendButton.setEnabled(true);
-							// Log execution to file
-							logExecution(req, finalHeaders, finalBody, response, executionException);
-
-							// Store for PDF report
-							lastExecutionResponse = response;
-							lastExecutionException = executionException;
-							lastExecutionRequestHeaders = finalHeaders;
-							lastExecutionRequestBody = finalBody;
-							lastExecutionDuration = duration;
-
-							// Capture console log for this request using invokeLater to catch pending prints (e.g. from printStackTrace)
-							SwingUtilities.invokeLater(() -> captureConsoleLog());
 						}
+
+						// 8. Display Response or Error
+						if (response != null) {
+							// Response Headers
+							StringBuilder respHeadersSb = new StringBuilder();
+							respHeadersSb.append("Status: ").append(response.statusCode()).append("\n\n");
+							response.headers().map().forEach((k, v) -> respHeadersSb.append(k).append(": ").append(v).append("\n"));
+							nodeConfigPanel.setResponseHeaders(respHeadersSb.toString());
+
+							// Response Body (with JSON formatting if applicable)
+							String responseBody;
+							String syntaxStyle = SyntaxConstants.SYNTAX_STYLE_NONE;
+
+							// Determine syntax from Content-Type header
+							String contentType = response.headers().firstValue("Content-Type").orElse("").toLowerCase();
+							if (contentType.contains("json")) {
+								syntaxStyle = SyntaxConstants.SYNTAX_STYLE_JSON;
+							} else if (contentType.contains("xml")) {
+								syntaxStyle = SyntaxConstants.SYNTAX_STYLE_XML;
+							} else if (contentType.contains("html")) {
+								syntaxStyle = SyntaxConstants.SYNTAX_STYLE_HTML;
+							}
+
+							try {
+								Object json = objectMapper.readValue(response.body(), Object.class);
+								responseBody = objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(json);
+								// If parsing succeeded, it is JSON
+								syntaxStyle = SyntaxConstants.SYNTAX_STYLE_JSON;
+							} catch (Exception e) {
+								responseBody = response.body();
+							}
+							nodeConfigPanel.setResponseBody(responseBody);
+							nodeConfigPanel.setResponseBodySyntax(syntaxStyle);
+
+							// Also set the old responseArea (now just shows response body since we have
+							// separate tabs)
+							nodeConfigPanel.getResponseArea().setText(responseBody);
+						} else if (executionException != null) {
+							String errorMsg = "Error: " + executionException.getMessage();
+							nodeConfigPanel.setResponseBody(errorMsg);
+							nodeConfigPanel.setResponseBodySyntax(SyntaxConstants.SYNTAX_STYLE_NONE);
+							nodeConfigPanel.getResponseArea().setText(errorMsg);
+							executionException.printStackTrace();
+						}
+					} finally {
+						long endTime = System.currentTimeMillis();
+						long duration = endTime - startTime;
+
+						sendButton.setEnabled(true);
+						sendButton.setEnabled(true);
+						// Log execution to file
+						logExecution(req, finalHeaders, finalBody, response, executionException);
+
+						// Store for PDF report
+						lastExecutionResponse = response;
+						lastExecutionException = executionException;
+						lastExecutionRequestHeaders = finalHeaders;
+						lastExecutionRequestBody = finalBody;
+						lastExecutionDuration = duration;
+
+						// Capture console log for this request using invokeLater to catch pending
+						// prints (e.g. from printStackTrace)
+						SwingUtilities.invokeLater(() -> captureConsoleLog());
 					}
-				};
+				}
+			};
 
-				worker.execute();
+			worker.execute();
 
-			} catch (Exception e) {
-				// Handle synchronous setup errors (e.g. header parsing, global var failures)
-				e.printStackTrace();
-				JOptionPane.showMessageDialog(this, "Error preparing request: " + e.getMessage());
-				lastExecutionException = e;
-				captureConsoleLog();
-			}
+		} catch (Exception e) {
+			// Handle synchronous setup errors (e.g. header parsing, global var failures)
+			e.printStackTrace();
+			JOptionPane.showMessageDialog(this, "Error preparing request: " + e.getMessage());
+			lastExecutionException = e;
+			captureConsoleLog();
+		}
 	}
 
 	private Map<String, String> parseProperties(String text) {
@@ -1841,7 +1973,7 @@ public class PostmanApp extends JFrame {
 				PostmanApp app = new PostmanApp();
 				app.setExtendedState(JFrame.MAXIMIZED_BOTH);
 				app.setVisible(true);
-				
+
 				// Set divider location after window is fully sized
 				app.addComponentListener(new java.awt.event.ComponentAdapter() {
 					@Override
@@ -1849,13 +1981,13 @@ public class PostmanApp extends JFrame {
 						SwingUtilities.invokeLater(() -> {
 							int height = app.verticalSplitPane.getHeight();
 							if (height > 0) {
-								app.verticalSplitPane.setDividerLocation((int)(height * 0.67));
+								app.verticalSplitPane.setDividerLocation((int) (height * 0.67));
 								app.removeComponentListener(this); // Only do this once
 							}
 						});
 					}
 				});
-				
+
 				app.toFront();
 				app.requestFocus();
 			} catch (Exception ex) {
@@ -1896,6 +2028,17 @@ public class PostmanApp extends JFrame {
 			@Override
 			public void actionPerformed(java.awt.event.ActionEvent e) {
 				saveProject();
+			}
+		});
+
+		// Trigger execution with Ctrl+Enter
+		javax.swing.KeyStroke ctrlEnter = javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_ENTER,
+				java.awt.event.InputEvent.CTRL_DOWN_MASK);
+		inputMap.put(ctrlEnter, "sendRequest");
+		actionMap.put("sendRequest", new javax.swing.AbstractAction() {
+			@Override
+			public void actionPerformed(java.awt.event.ActionEvent e) {
+				sendRequest();
 			}
 		});
 	}
@@ -1977,7 +2120,7 @@ public class PostmanApp extends JFrame {
 			JOptionPane.showMessageDialog(this, "Failed to open log file: " + e.getMessage());
 		}
 	}
-	
+
 	private void captureConsoleLog() {
 		try {
 			int endOffset = consoleTextArea.getDocument().getLength();

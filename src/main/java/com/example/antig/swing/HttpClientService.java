@@ -26,6 +26,18 @@ public class HttpClientService {
 
 	public HttpResponse<String> sendRequest(String url, String method, String body,
 			java.util.Map<String, String> headers, long timeoutMillis, String httpVersion) throws Exception {
+		HttpRequest builder = buildRequest(url, method, body, headers, timeoutMillis, httpVersion);
+		return httpClient.send(builder, HttpResponse.BodyHandlers.ofString());
+	}
+
+	public HttpResponse<byte[]> sendRequestBytes(String url, String method, String body,
+			java.util.Map<String, String> headers, long timeoutMillis, String httpVersion) throws Exception {
+		HttpRequest builder = buildRequest(url, method, body, headers, timeoutMillis, httpVersion);
+		return httpClient.send(builder, HttpResponse.BodyHandlers.ofByteArray());
+	}
+
+	private HttpRequest buildRequest(String url, String method, String body,
+			java.util.Map<String, String> headers, long timeoutMillis, String httpVersion) {
 
 		HttpRequest.Builder builder = HttpRequest.newBuilder().uri(URI.create(url))
 				.timeout(Duration.ofMillis(timeoutMillis));
@@ -72,10 +84,7 @@ public class HttpClientService {
 		default:
 			throw new IllegalArgumentException("Unsupported method: " + effectiveMethod);
 		}
-
-		HttpResponse<String> resp = httpClient.send(builder.build(), HttpResponse.BodyHandlers.ofString());
-
-		return resp;
+		return builder.build();
 	}
 
 	public static SSLContext createTrustAllSslContext() throws NoSuchAlgorithmException, KeyManagementException {
