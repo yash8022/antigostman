@@ -102,11 +102,23 @@ Every contribution helps us remain **100% open-source and bloat-free**.
 
 <div align="center">
 
-**Enjoying Antigostman?**  
-Give us a ⭐ on GitHub!
+## 💌 Join the Mission
+
+**We are building Antigostman for YOU.**  
+Your feedback is the fuel that powers our engine (along with the coffee ☕).
+
+**Found a bug?** 🐛 [Report it!](../../issues) &nbsp;&nbsp;•&nbsp;&nbsp; **Have an idea?** 💡 [Share it!](../../discussions)
+
+If this tool sparked joy (or saved your RAM), please **Star this repository** ⭐.  
+*It helps more developers discover the power of native apps.*
 
 <br>
 
 <sub>Released under the MIT License.</sub>
 
 </div>
+
+<!-- 
+Relevant Topics:
+java, swing, api-testing, rest-client, http-client, offline-first, developer-tools, postman-alternative, insomnia-alternative, open-source, desktop-app, rest-api, automation, testing, json, xml, productivity, lightweight, privacy-focused, native-app, postman
+-->
