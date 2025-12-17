@@ -1,0 +1,424 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<XmlCollection>
+  <type>collection</type>
+  <id>demo-project-01</id>
+  <name>Demo API Testing Project</name>
+  <environment>
+    <entry>
+      <string>BASE_URL</string>
+      <string>https://jsonplaceholder.typicode.com</string>
+    </entry>
+    <entry>
+      <string>API_KEY</string>
+      <string>demo-api-key-12345</string>
+    </entry>
+  </environment>
+  <headers>
+    <entry>
+      <string>User-Agent</string>
+      <string>Antigostman/1.2</string>
+    </entry>
+  </headers>
+  <prescript>// Global prescript
+console.log("=== Project-level prescript ===");
+console.log("Base URL: " + BASE_URL);</prescript>
+  <postscript>// Global postscript
+console.log("=== Request completed ===");</postscript>
+  <expanded>true</expanded>
+  <selectedTabIndex>0</selectedTabIndex>
+  <children>
+    <XmlFolder>
+      <type>folder</type>
+      <id>folder-users</id>
+      <name>👤 User Management</name>
+      <environment>
+        <entry>
+          <string>USERS_ENDPOINT</string>
+          <string>{{BASE_URL}}/users</string>
+        </entry>
+      </environment>
+      <headers/>
+      <prescript></prescript>
+      <postscript></postscript>
+      <expanded>true</expanded>
+      <selectedTabIndex>0</selectedTabIndex>
+      <children>
+        <XmlRequest>
+          <type>request</type>
+          <id>req-get-users</id>
+          <name>Get All Users</name>
+          <environment/>
+          <headers>
+            <entry>
+              <string>Accept</string>
+              <string>application/json</string>
+            </entry>
+          </headers>
+          <prescript>console.log("Fetching all users...");</prescript>
+          <postscript>console.log("Response status: " + response.statusCode());</postscript>
+          <expanded>false</expanded>
+          <selectedTabIndex>0</selectedTabIndex>
+          <method>GET</method>
+          <url>{{USERS_ENDPOINT}}</url>
+          <body></body>
+          <params></params>
+          <bodyType>TEXT</bodyType>
+          <executionTabIndex>0</executionTabIndex>
+          <timeout>5000</timeout>
+          <httpVersion>HTTP/1.1</httpVersion>
+          <downloadContent>false</downloadContent>
+        </XmlRequest>
+        <XmlRequest>
+          <type>request</type>
+          <id>req-get-user-by-id</id>
+          <name>Get User by ID</name>
+          <environment>
+            <entry>
+              <string>USER_ID</string>
+              <string>1</string>
+            </entry>
+          </environment>
+          <headers>
+            <entry>
+              <string>Accept</string>
+              <string>application/json</string>
+            </entry>
+          </headers>
+          <prescript>console.log("Fetching user with ID: " + USER_ID);</prescript>
+          <postscript></postscript>
+          <expanded>false</expanded>
+          <selectedTabIndex>0</selectedTabIndex>
+          <method>GET</method>
+          <url>{{USERS_ENDPOINT}}/{{USER_ID}}</url>
+          <body></body>
+          <params></params>
+          <bodyType>TEXT</bodyType>
+          <executionTabIndex>0</executionTabIndex>
+          <timeout>5000</timeout>
+          <httpVersion>HTTP/1.1</httpVersion>
+          <downloadContent>false</downloadContent>
+        </XmlRequest>
+        <XmlRequest>
+          <type>request</type>
+          <id>req-create-user</id>
+          <name>Create New User</name>
+          <environment/>
+          <headers>
+            <entry>
+              <string>Content-Type</string>
+              <string>application/json</string>
+            </entry>
+          </headers>
+          <prescript>console.log("Creating new user...");</prescript>
+          <postscript>console.log("User created with status: " + response.statusCode());</postscript>
+          <expanded>false</expanded>
+          <selectedTabIndex>0</selectedTabIndex>
+          <method>POST</method>
+          <url>{{USERS_ENDPOINT}}</url>
+          <body>{
+  "name": "John Doe",
+  "username": "johndoe",
+  "email": "john.doe@example.com",
+  "phone": "+1-555-0100",
+  "website": "johndoe.com"
+}</body>
+          <params></params>
+          <bodyType>JSON</bodyType>
+          <executionTabIndex>0</executionTabIndex>
+          <timeout>5000</timeout>
+          <httpVersion>HTTP/1.1</httpVersion>
+          <downloadContent>false</downloadContent>
+        </XmlRequest>
+        <XmlRequest>
+          <type>request</type>
+          <id>req-update-user</id>
+          <name>Update User</name>
+          <environment>
+            <entry>
+              <string>USER_ID</string>
+              <string>1</string>
+            </entry>
+          </environment>
+          <headers>
+            <entry>
+              <string>Content-Type</string>
+              <string>application/json</string>
+            </entry>
+          </headers>
+          <prescript></prescript>
+          <postscript></postscript>
+          <expanded>false</expanded>
+          <selectedTabIndex>0</selectedTabIndex>
+          <method>PUT</method>
+          <url>{{USERS_ENDPOINT}}/{{USER_ID}}</url>
+          <body>{
+  "name": "Jane Smith",
+  "email": "jane.smith@example.com"
+}</body>
+          <params></params>
+          <bodyType>JSON</bodyType>
+          <executionTabIndex>0</executionTabIndex>
+          <timeout>5000</timeout>
+          <httpVersion>HTTP/1.1</httpVersion>
+          <downloadContent>false</downloadContent>
+        </XmlRequest>
+        <XmlRequest>
+          <type>request</type>
+          <id>req-delete-user</id>
+          <name>Delete User</name>
+          <environment>
+            <entry>
+              <string>USER_ID</string>
+              <string>10</string>
+            </entry>
+          </environment>
+          <headers/>
+          <prescript>console.log("Deleting user ID: " + USER_ID);</prescript>
+          <postscript></postscript>
+          <expanded>false</expanded>
+          <selectedTabIndex>0</selectedTabIndex>
+          <method>DELETE</method>
+          <url>{{USERS_ENDPOINT}}/{{USER_ID}}</url>
+          <body></body>
+          <params></params>
+          <bodyType>TEXT</bodyType>
+          <executionTabIndex>0</executionTabIndex>
+          <timeout>5000</timeout>
+          <httpVersion>HTTP/1.1</httpVersion>
+          <downloadContent>false</downloadContent>
+        </XmlRequest>
+      </children>
+    </XmlFolder>
+    <XmlFolder>
+      <type>folder</type>
+      <id>folder-posts</id>
+      <name>📝 Posts & Comments</name>
+      <environment>
+        <entry>
+          <string>POSTS_ENDPOINT</string>
+          <string>{{BASE_URL}}/posts</string>
+        </entry>
+      </environment>
+      <headers/>
+      <prescript></prescript>
+      <postscript></postscript>
+      <expanded>true</expanded>
+      <selectedTabIndex>0</selectedTabIndex>
+      <children>
+        <XmlRequest>
+          <type>request</type>
+          <id>req-get-posts</id>
+          <name>Get All Posts</name>
+          <environment/>
+          <headers/>
+          <prescript></prescript>
+          <postscript></postscript>
+          <expanded>false</expanded>
+          <selectedTabIndex>0</selectedTabIndex>
+          <method>GET</method>
+          <url>{{POSTS_ENDPOINT}}</url>
+          <body></body>
+          <params></params>
+          <bodyType>TEXT</bodyType>
+          <executionTabIndex>0</executionTabIndex>
+          <timeout>5000</timeout>
+          <httpVersion>HTTP/2</httpVersion>
+          <downloadContent>false</downloadContent>
+        </XmlRequest>
+        <XmlRequest>
+          <type>request</type>
+          <id>req-search-posts</id>
+          <name>Search Posts (Query Params)</name>
+          <environment/>
+          <headers/>
+          <prescript></prescript>
+          <postscript></postscript>
+          <expanded>false</expanded>
+          <selectedTabIndex>0</selectedTabIndex>
+          <method>GET</method>
+          <url>{{POSTS_ENDPOINT}}</url>
+          <body>userId=1
+_limit=5</body>
+          <params></params>
+          <bodyType>FORM ENCODED</bodyType>
+          <executionTabIndex>0</executionTabIndex>
+          <timeout>5000</timeout>
+          <httpVersion>HTTP/1.1</httpVersion>
+          <downloadContent>false</downloadContent>
+        </XmlRequest>
+        <XmlRequest>
+          <type>request</type>
+          <id>req-create-post</id>
+          <name>Create Post (XML)</name>
+          <environment/>
+          <headers>
+            <entry>
+              <string>Content-Type</string>
+              <string>application/xml</string>
+            </entry>
+          </headers>
+          <prescript></prescript>
+          <postscript></postscript>
+          <expanded>false</expanded>
+          <selectedTabIndex>0</selectedTabIndex>
+          <method>POST</method>
+          <url>{{POSTS_ENDPOINT}}</url>
+          <body>&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;post&gt;
+  &lt;title&gt;New Amazing Post&lt;/title&gt;
+  &lt;body&gt;This is the content of my post&lt;/body&gt;
+  &lt;userId&gt;1&lt;/userId&gt;
+&lt;/post&gt;</body>
+          <params></params>
+          <bodyType>XML</bodyType>
+          <executionTabIndex>0</executionTabIndex>
+          <timeout>5000</timeout>
+          <httpVersion>HTTP/1.1</httpVersion>
+          <downloadContent>false</downloadContent>
+        </XmlRequest>
+        <XmlRequest>
+          <type>request</type>
+          <id>req-patch-post</id>
+          <name>Partial Update Post</name>
+          <environment>
+            <entry>
+              <string>POST_ID</string>
+              <string>1</string>
+            </entry>
+          </environment>
+          <headers>
+            <entry>
+              <string>Content-Type</string>
+              <string>application/json</string>
+            </entry>
+          </headers>
+          <prescript></prescript>
+          <postscript></postscript>
+          <expanded>false</expanded>
+          <selectedTabIndex>0</selectedTabIndex>
+          <method>PATCH</method>
+          <url>{{POSTS_ENDPOINT}}/{{POST_ID}}</url>
+          <body>{
+  "title": "Updated Title"
+}</body>
+          <params></params>
+          <bodyType>JSON</bodyType>
+          <executionTabIndex>0</executionTabIndex>
+          <timeout>5000</timeout>
+          <httpVersion>HTTP/1.1</httpVersion>
+          <downloadContent>false</downloadContent>
+        </XmlRequest>
+      </children>
+    </XmlFolder>
+    <XmlFolder>
+      <type>folder</type>
+      <id>folder-advanced</id>
+      <name>🚀 Advanced Features</name>
+      <environment/>
+      <headers/>
+      <prescript></prescript>
+      <postscript></postscript>
+      <expanded>true</expanded>
+      <selectedTabIndex>0</selectedTabIndex>
+      <children>
+        <XmlRequest>
+          <type>request</type>
+          <id>req-form-upload</id>
+          <name>Form Encoded Request</name>
+          <environment/>
+          <headers/>
+          <prescript></prescript>
+          <postscript></postscript>
+          <expanded>false</expanded>
+          <selectedTabIndex>0</selectedTabIndex>
+          <method>POST</method>
+          <url>https://httpbin.org/post</url>
+          <body>username=testuser
+password=secret123
+remember=true</body>
+          <params></params>
+          <bodyType>FORM ENCODED</bodyType>
+          <executionTabIndex>0</executionTabIndex>
+          <timeout>10000</timeout>
+          <httpVersion>HTTP/1.1</httpVersion>
+          <downloadContent>false</downloadContent>
+        </XmlRequest>
+        <XmlRequest>
+          <type>request</type>
+          <id>req-multipart</id>
+          <name>Multipart File Upload</name>
+          <environment/>
+          <headers/>
+          <prescript>console.log("Uploading file via multipart...");</prescript>
+          <postscript></postscript>
+          <expanded>false</expanded>
+          <selectedTabIndex>0</selectedTabIndex>
+          <method>POST</method>
+          <url>https://httpbin.org/post</url>
+          <body>name=John Doe
+description=Test upload
+avatar=file:/tmp/sample-avatar.png</body>
+          <params></params>
+          <bodyType>MULTIPART</bodyType>
+          <executionTabIndex>0</executionTabIndex>
+          <timeout>30000</timeout>
+          <httpVersion>HTTP/1.1</httpVersion>
+          <downloadContent>false</downloadContent>
+        </XmlRequest>
+        <XmlRequest>
+          <type>request</type>
+          <id>req-download-pdf</id>
+          <name>Download PDF (Binary)</name>
+          <environment/>
+          <headers/>
+          <prescript></prescript>
+          <postscript></postscript>
+          <expanded>false</expanded>
+          <selectedTabIndex>0</selectedTabIndex>
+          <method>GET</method>
+          <url>https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf</url>
+          <body></body>
+          <params></params>
+          <bodyType>TEXT</bodyType>
+          <executionTabIndex>0</executionTabIndex>
+          <timeout>15000</timeout>
+          <httpVersion>HTTP/1.1</httpVersion>
+          <downloadContent>true</downloadContent>
+        </XmlRequest>
+        <XmlRequest>
+          <type>request</type>
+          <id>req-http2-demo</id>
+          <name>HTTP/2 Request</name>
+          <environment/>
+          <headers/>
+          <prescript></prescript>
+          <postscript></postscript>
+          <expanded>false</expanded>
+          <selectedTabIndex>0</selectedTabIndex>
+          <method>GET</method>
+          <url>https://http2.akamai.com/demo</url>
+          <body></body>
+          <params></params>
+          <bodyType>TEXT</bodyType>
+          <executionTabIndex>0</executionTabIndex>
+          <timeout>10000</timeout>
+          <httpVersion>HTTP/2</httpVersion>
+          <downloadContent>false</downloadContent>
+        </XmlRequest>
+      </children>
+    </XmlFolder>
+  </children>
+  <lastSelectedNodeId>req-get-users</lastSelectedNodeId>
+  <globalVariables>
+    <entry>
+      <string>TIMESTAMP</string>
+      <string>2025-12-17T22:40:00</string>
+    </entry>
+    <entry>
+      <string>APP_VERSION</string>
+      <string>1.2</string>
+    </entry>
+  </globalVariables>
+  <emailReportTo>team@example.com</emailReportTo>
+  <emailReportCc>manager@example.com</emailReportCc>
+</XmlCollection>

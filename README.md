@@ -86,6 +86,27 @@ Stay in the flow with these essential shortcuts.
 
 ---
 
+## 🗺️ Roadmap
+
+We're constantly evolving. Here's what's coming next:
+
+- [ ] **Test Suites**: Configure and run automated test collections with assertions
+- [ ] **Test Runner**: Execute multiple requests sequentially with detailed pass/fail reports
+- [ ] **Request Chaining**: Automatically pass data between sequential requests
+- [ ] **GraphQL Support**: Native GraphQL query builder and explorer
+
+---
+
+## 💎 Special Credits
+
+This project was brought to life with the incredible assistance of **Google Antigravity** 🚀, the agentic AI coding assistant from Google DeepMind.
+
+**~95% of Antigostman's base code** was collaboratively written with Antigravity, demonstrating the power of human-AI pair programming. From architecture decisions to feature implementation, Antigravity helped transform ideas into production-ready code at remarkable speed.
+
+*Building the future, one commit at a time.* 🤖✨
+
+---
+
 ## ☕ Fuel the Development
 
 If Antigostman has saved you RAM, CPU cycles, or just made your API testing a little bit happier, consider fueling the next update! Your support keeps the code flowing and the coffee brewing. 
@@ -107,7 +128,7 @@ Every contribution helps us remain **100% open-source and bloat-free**.
 **We are building Antigostman for YOU.**  
 Your feedback is the fuel that powers our engine (along with the coffee ☕).
 
-**Found a bug?** 🐛 [Report it!](../../issues) &nbsp;&nbsp;•&nbsp;&nbsp; **Have an idea?** 💡 [Share it!](../../discussions)
+**Found a bug?** 🐛 [Report it!](issues) &nbsp;&nbsp;•&nbsp;&nbsp; **Have an idea?** 💡 [Share it!](discussions)
 
 If this tool sparked joy (or saved your RAM), please **Star this repository** ⭐.  
 *It helps more developers discover the power of native apps.*
