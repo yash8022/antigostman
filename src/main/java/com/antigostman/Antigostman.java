@@ -1185,15 +1185,18 @@ public class Antigostman extends JFrame {
 						if (binaryResp.body() != null && binaryResp.body().length > 0) {
 							try {
 								// Detect type
+								// Detect type
 								org.apache.tika.Tika tika = new org.apache.tika.Tika();
 								String mimeType = tika.detect(binaryResp.body());
-								String ext = ".bin"; // Default
+								// Default to empty extension if not reliably detected
+								String ext = ""; 
+
 								try {
 									org.apache.tika.mime.MimeTypes allTypes = org.apache.tika.mime.MimeTypes.getDefaultMimeTypes();
 									org.apache.tika.mime.MimeType type = allTypes.forName(mimeType);
-									ext = type.getExtension();
-									if (ext == null || ext.isEmpty()) {
-										ext = ".bin";
+									String detectedExt = type.getExtension();
+									if (detectedExt != null && !detectedExt.isEmpty() && !detectedExt.equals(".bin")) {
+										ext = detectedExt;
 									}
 								} catch (Exception ex) {
 									// Fallback extension detection
@@ -1212,24 +1215,42 @@ public class Antigostman extends JFrame {
 									} else if (mimeType.contains("image/jpeg")) {
 										ext = ".jpg";
 									}
-									}
+								}
                                     
-                                    // Generate filename: DL-yyyyMMddHHmmss
-									String timestamp = java.time.LocalDateTime.now()
-											.format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
-									String filename = "DL-" + timestamp + ext;
-									File tempDir = new File(System.getProperty("java.io.tmpdir"));
-									File tempFile = new File(tempDir, filename);
-									
-									java.nio.file.Files.write(tempFile.toPath(), binaryResp.body());
-									
-									System.out.println("Saved download to: " + tempFile.getAbsolutePath());
+                                // Generate filename: DL-yyyyMMddHHmmss
+								String timestamp = java.time.LocalDateTime.now()
+										.format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
+								String filename = "DL-" + timestamp + ext;
+								File tempDir = new File(System.getProperty("java.io.tmpdir"));
+								File tempFile = new File(tempDir, filename);
+								
+								java.nio.file.Files.write(tempFile.toPath(), binaryResp.body());
+								
+								System.out.println("Saved download to: " + tempFile.getAbsolutePath());
 
 								// Open file
 								if (java.awt.Desktop.isDesktopSupported()) {
+									final String finalExt = ext;
 									SwingUtilities.invokeLater(() -> {
 										try {
-											java.awt.Desktop.getDesktop().open(tempFile);
+											if (finalExt.isEmpty()) {
+												// Try to force "Open With" dialog
+												String os = System.getProperty("os.name").toLowerCase();
+												if (os.contains("linux")) {
+													// xdg-open usually asks if unknown, or we can try to find a mime open
+													new ProcessBuilder("xdg-open", tempFile.getAbsolutePath()).start();
+												} else if (os.contains("win")) {
+													// rundll32 shell32.dll,OpenAs_RunDLL <file>
+													new ProcessBuilder("rundll32", "shell32.dll,OpenAs_RunDLL", tempFile.getAbsolutePath()).start();
+												} else if (os.contains("mac")) {
+													// open -a TextEdit ? or just open which might fail
+													new ProcessBuilder("open", tempFile.getAbsolutePath()).start();
+												} else {
+													java.awt.Desktop.getDesktop().open(tempFile);
+												}
+											} else {
+												java.awt.Desktop.getDesktop().open(tempFile);
+											}
 										} catch (Exception ex) {
 											ex.printStackTrace();
 											JOptionPane.showMessageDialog(Antigostman.this, "Failed to open file: " + ex.getMessage());
