@@ -1103,8 +1103,20 @@ public class Antigostman extends JFrame {
 			// 5. Body Formatting & Content-Type
 			String bodyType = req.getBodyType() != null ? req.getBodyType() : "TEXT";
 			String bodyToSend = req.getBody();
+			boolean isGet = "GET".equalsIgnoreCase(req.getMethod());
+			String queryParams = null;
 
-			if ("FORM ENCODED".equalsIgnoreCase(bodyType)) {
+			// Treat body as params (Form Encoded) if explicitly selected OR if it's a GET request with content
+			if ("FORM ENCODED".equalsIgnoreCase(bodyType) || (isGet && StringUtils.isNotBlank(bodyToSend))) {
+				
+				// Resolve variables BEFORE encoding to ensure substitution works
+				try {
+					bodyToSend = parse(bodyToSend, variables);
+				} catch (Exception e) {
+					// Fallback: use raw body if parsing fails (though unexpected)
+					log.error("Error parsing variables in body", e);
+				}
+
 				// Parse properties to map and convert to URL encoded
 				Map<String, String> formParams = parseProperties(bodyToSend);
 				StringBuilder encoded = new StringBuilder();
@@ -1117,8 +1129,17 @@ public class Antigostman extends JFrame {
 						encoded.append("=").append(URLEncoder.encode(entry.getValue(), StandardCharsets.UTF_8));
 					}
 				}
-				bodyToSend = encoded.toString();
-				headers.put("Content-Type", "application/x-www-form-urlencoded");
+				
+				String encodedBody = encoded.toString();
+				
+				if (isGet) {
+					queryParams = encodedBody;
+					// Update bodyToSend to reflect the parsed params (for logging/display purposes)
+					bodyToSend = encodedBody;
+				} else {
+					bodyToSend = encodedBody;
+					headers.put("Content-Type", "application/x-www-form-urlencoded");
+				}
 			} else if ("JSON".equalsIgnoreCase(bodyType)) {
 				headers.put("Content-Type", "application/json");
 			} else if ("XML".equalsIgnoreCase(bodyType)) {
@@ -1126,6 +1147,8 @@ public class Antigostman extends JFrame {
 			} else if ("TEXT".equalsIgnoreCase(bodyType)) {
 				headers.put("Content-Type", "text/plain");
 			}
+
+			String finalQueryParams = queryParams;
 
 			// 6. Send Request
 			// nodeConfigPanel.selectExecutionTab();
@@ -1143,6 +1166,12 @@ public class Antigostman extends JFrame {
 				protected HttpResponse<String> doInBackground() throws Exception {
 
 					String url = parse(req.getUrl(), variables);
+					
+					// Append query params for GET requests
+					if (finalQueryParams != null && !finalQueryParams.isEmpty()) {
+						String separator = url.contains("?") ? "&" : "?";
+						url = url + separator + finalQueryParams;
+					}
 					String body = parse(finalBody, variables);
 
 					System.out.println("> " + url);
