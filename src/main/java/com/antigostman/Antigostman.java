@@ -32,11 +32,13 @@ import javax.script.ScriptEngine;
 import javax.script.ScriptEngineManager;
 import javax.swing.BorderFactory;
 import javax.swing.Box;
+import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
+import javax.swing.JLabel;
 import javax.swing.JMenu;
 import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
@@ -488,18 +490,45 @@ public class Antigostman extends JFrame {
 			}
 		});
 
-		JPanel leftPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
-		leftPanel.add(methodComboBox);
-		leftPanel.add(Box.createHorizontalStrut(5));
-		leftPanel.add(bodyTypeComboBox);
-		leftPanel.add(Box.createHorizontalStrut(5));
-		leftPanel.add(httpVersionComboBox);
+		// Restructure the toolbar into two lines
+		JPanel contentPanel = new JPanel();
+		contentPanel.setLayout(new BoxLayout(contentPanel, BoxLayout.Y_AXIS));
+		contentPanel.setOpaque(false);
 
-		toolbar.add(leftPanel, BorderLayout.WEST);
-		toolbar.add(urlField, BorderLayout.CENTER);
+		// Line 1: URL and Send button
+		JPanel line1 = new JPanel(new BorderLayout(5, 0));
+		line1.setOpaque(false);
+		line1.add(urlField, BorderLayout.CENTER);
+		line1.add(sendButton, BorderLayout.EAST);
+		// Force line1 to take up only its preferred height
+		line1.setMaximumSize(new Dimension(Integer.MAX_VALUE, line1.getPreferredSize().height));
+		contentPanel.add(line1);
 
-		JPanel rightPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
+		contentPanel.add(Box.createVerticalStrut(5));
 
+		// Line 2: Method, Body Type, HTTP Version, Timeout, DL Checkbox
+		JPanel line2 = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+		line2.setOpaque(false);
+
+		// Method ComboBox (WEST equivalent)
+		line2.add(methodComboBox);
+		line2.add(Box.createHorizontalStrut(5));
+
+		// Body Type ComboBox (Increased width to 240 as requested)
+		bodyTypeComboBox.setPreferredSize(new Dimension(240, 30));
+		line2.add(bodyTypeComboBox);
+		line2.add(Box.createHorizontalStrut(5));
+
+		// HTTP Version ComboBox
+		line2.add(httpVersionComboBox);
+		line2.add(Box.createHorizontalStrut(20)); // More space between selectors and options
+
+		// Timeout Spinner
+		line2.add(new JLabel("Timeout: "));
+		line2.add(timeoutSpinner);
+		line2.add(Box.createHorizontalStrut(20));
+
+		// Download Checkbox
 		dlContentCheckbox = new JCheckBox("DL Content");
 		dlContentCheckbox.setToolTipText("Download response as file and open it");
 		dlContentCheckbox.addActionListener(e -> {
@@ -509,17 +538,16 @@ public class Antigostman extends JFrame {
 			if (currentNode instanceof PostmanRequest) {
 				PostmanRequest req = (PostmanRequest) currentNode;
 				req.setDownloadContent(dlContentCheckbox.isSelected());
-				// autoSaveProject();
 			}
 		});
-		rightPanel.add(dlContentCheckbox);
-		rightPanel.add(Box.createHorizontalStrut(5));
+		line2.add(dlContentCheckbox);
+		
+		// Force line2 to take up only its preferred height
+		line2.setMaximumSize(new Dimension(Integer.MAX_VALUE, line2.getPreferredSize().height));
 
-		rightPanel.add(timeoutSpinner);
-		rightPanel.add(Box.createHorizontalStrut(5));
-		rightPanel.add(sendButton);
+		contentPanel.add(line2);
 
-		toolbar.add(rightPanel, BorderLayout.EAST);
+		toolbar.add(contentPanel, BorderLayout.CENTER);
 
 		// Initially hidden, shown only for requests
 		toolbar.setVisible(false);

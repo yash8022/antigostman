@@ -11,6 +11,10 @@
   <b>Fast</b> • <b>Native</b> • <b>Bloat-free</b>
 </p>
 
+<p align="center">
+  <img src="assets/screenshot.png" alt="Antigostman UI" width="800">
+</p>
+
 <br>
 
 Antigostman brings the power of professional API testing back to your desktop without the heavy browser engine. 
