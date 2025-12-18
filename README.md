@@ -94,6 +94,8 @@ We're constantly evolving. Here's what's coming next:
 - [ ] **Test Runner**: Execute multiple requests sequentially with detailed pass/fail reports
 - [ ] **Request Chaining**: Automatically pass data between sequential requests
 - [ ] **GraphQL Support**: Native GraphQL query builder and explorer
+- [ ] **Multipart Upload Stabilization**: Enhanced reliability and error handling for multipart file uploads
+- [ ] **Postman Import**: Convert and import Postman project files to Antigostman format
 
 ---
 
