@@ -11,6 +11,10 @@
   <b>Fast</b> • <b>Native</b> • <b>Bloat-free</b>
 </p>
 
+<p align="center">
+  <img src="assets/screenshot.png" alt="Antigostman UI" width="800">
+</p>
+
 <br>
 
 Antigostman brings the power of professional API testing back to your desktop without the heavy browser engine. 
@@ -35,7 +39,7 @@ We believe tools should respect your resources. Antigostman is built with **pure
 
 ### 🧠 **Advanced Automation**
 *   **Scripting Engine**: Write `JavaScript` pre-request and test scripts securely.
-*   **Dynamic Variables**: Use `{{double_braces}}` to inject environment variables anywhere.
+*   **Dynamic Content**: Powered by **Apache Velocity** for advanced variablisation. Use well-formed expressions like `$!{auth_token}` or `{{base_url}}` to inject dynamic data anywhere in your requests.
 *   **Console Debugging**: A built-in terminal to inspect your logic in real-time.
 
 ### 📊 **Beautiful Reporting**
@@ -46,6 +50,7 @@ We believe tools should respect your resources. Antigostman is built with **pure
 *   **Theme Aware**: Automatically adapts to **Light** or **Dark** environments.
 *   **Syntax Highlighting**: Rich coloring for JSON, XML, properties, and more.
 *   **Project Management**: Save your workspaces as portable XML files.
+*   **Postman Migration**: Seamlessly import existing **Postman Collections (v2 & v2.1)** with full support for requests, folders, and scripts.
 
 ---
 
@@ -94,6 +99,8 @@ We're constantly evolving. Here's what's coming next:
 - [ ] **Test Runner**: Execute multiple requests sequentially with detailed pass/fail reports
 - [ ] **Request Chaining**: Automatically pass data between sequential requests
 - [ ] **GraphQL Support**: Native GraphQL query builder and explorer
+- [ ] **Multipart Upload Stabilization**: Enhanced reliability and error handling for multipart file uploads
+- [ ] **Utility Enrichment**: Expand built-in helper functions and tools with frequently used developer utilities (encoding, date formatting, UUID generation, etc.)
 
 ---
 

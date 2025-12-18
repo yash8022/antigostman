@@ -32,11 +32,13 @@ import javax.script.ScriptEngine;
 import javax.script.ScriptEngineManager;
 import javax.swing.BorderFactory;
 import javax.swing.Box;
+import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
+import javax.swing.JLabel;
 import javax.swing.JMenu;
 import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
@@ -65,6 +67,8 @@ import com.antigostman.model.PostmanCollection;
 import com.antigostman.model.PostmanFolder;
 import com.antigostman.model.PostmanNode;
 import com.antigostman.model.PostmanRequest;
+import com.antigostman.model.postman.PostmanCollectionV2;
+import com.antigostman.service.PostmanImportService;
 import com.antigostman.service.ProjectService;
 import com.antigostman.service.RecentProjectsManager;
 import com.antigostman.ui.NodeConfigPanel;
@@ -105,6 +109,7 @@ public class Antigostman extends JFrame {
 	private JCheckBox pdfOpenCheckbox; // New Checkbox
 	private JCheckBox dlContentCheckbox; // New DL Content Checkbox
 	private JPanel requestToolbar;
+	private JMenu recentProjectsMenu;
 
 	private PostmanNode currentNode;
 	private boolean isLoadingNode = false; // Flag to prevent listeners from firing during load
@@ -168,15 +173,19 @@ public class Antigostman extends JFrame {
 		JMenuItem newProjectItem = new JMenuItem("New Project");
 		newProjectItem.addActionListener(e -> newProject());
 
+		JMenuItem importPostmanItem = new JMenuItem("Import Postman Collection");
+		importPostmanItem.addActionListener(e -> importPostmanCollection());
+
 		fileMenu.add(newProjectItem);
 		fileMenu.add(saveItem);
 		fileMenu.add(loadItem);
+		fileMenu.add(importPostmanItem);
 		fileMenu.addSeparator();
 
 		// Recent Projects submenu
-		JMenu recentMenu = new JMenu("Recent Projects");
-		updateRecentProjectsMenu(recentMenu);
-		fileMenu.add(recentMenu);
+		recentProjectsMenu = new JMenu("Recent Projects");
+		updateRecentProjectsMenu(recentProjectsMenu);
+		fileMenu.add(recentProjectsMenu);
 
 		fileMenu.addSeparator();
 
@@ -481,18 +490,45 @@ public class Antigostman extends JFrame {
 			}
 		});
 
-		JPanel leftPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
-		leftPanel.add(methodComboBox);
-		leftPanel.add(Box.createHorizontalStrut(5));
-		leftPanel.add(bodyTypeComboBox);
-		leftPanel.add(Box.createHorizontalStrut(5));
-		leftPanel.add(httpVersionComboBox);
+		// Restructure the toolbar into two lines
+		JPanel contentPanel = new JPanel();
+		contentPanel.setLayout(new BoxLayout(contentPanel, BoxLayout.Y_AXIS));
+		contentPanel.setOpaque(false);
 
-		toolbar.add(leftPanel, BorderLayout.WEST);
-		toolbar.add(urlField, BorderLayout.CENTER);
+		// Line 1: URL and Send button
+		JPanel line1 = new JPanel(new BorderLayout(5, 0));
+		line1.setOpaque(false);
+		line1.add(urlField, BorderLayout.CENTER);
+		line1.add(sendButton, BorderLayout.EAST);
+		// Force line1 to take up only its preferred height
+		line1.setMaximumSize(new Dimension(Integer.MAX_VALUE, line1.getPreferredSize().height));
+		contentPanel.add(line1);
 
-		JPanel rightPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
+		contentPanel.add(Box.createVerticalStrut(5));
 
+		// Line 2: Method, Body Type, HTTP Version, Timeout, DL Checkbox
+		JPanel line2 = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+		line2.setOpaque(false);
+
+		// Method ComboBox (WEST equivalent)
+		line2.add(methodComboBox);
+		line2.add(Box.createHorizontalStrut(5));
+
+		// Body Type ComboBox (Increased width to 240 as requested)
+		bodyTypeComboBox.setPreferredSize(new Dimension(240, 30));
+		line2.add(bodyTypeComboBox);
+		line2.add(Box.createHorizontalStrut(5));
+
+		// HTTP Version ComboBox
+		line2.add(httpVersionComboBox);
+		line2.add(Box.createHorizontalStrut(20)); // More space between selectors and options
+
+		// Timeout Spinner
+		line2.add(new JLabel("Timeout: "));
+		line2.add(timeoutSpinner);
+		line2.add(Box.createHorizontalStrut(20));
+
+		// Download Checkbox
 		dlContentCheckbox = new JCheckBox("DL Content");
 		dlContentCheckbox.setToolTipText("Download response as file and open it");
 		dlContentCheckbox.addActionListener(e -> {
@@ -502,17 +538,16 @@ public class Antigostman extends JFrame {
 			if (currentNode instanceof PostmanRequest) {
 				PostmanRequest req = (PostmanRequest) currentNode;
 				req.setDownloadContent(dlContentCheckbox.isSelected());
-				// autoSaveProject();
 			}
 		});
-		rightPanel.add(dlContentCheckbox);
-		rightPanel.add(Box.createHorizontalStrut(5));
+		line2.add(dlContentCheckbox);
+		
+		// Force line2 to take up only its preferred height
+		line2.setMaximumSize(new Dimension(Integer.MAX_VALUE, line2.getPreferredSize().height));
 
-		rightPanel.add(timeoutSpinner);
-		rightPanel.add(Box.createHorizontalStrut(5));
-		rightPanel.add(sendButton);
+		contentPanel.add(line2);
 
-		toolbar.add(rightPanel, BorderLayout.EAST);
+		toolbar.add(contentPanel, BorderLayout.CENTER);
 
 		// Initially hidden, shown only for requests
 		toolbar.setVisible(false);
@@ -1706,9 +1741,7 @@ public class Antigostman extends JFrame {
 
 			updateOpenProjectsList();
 			recentProjectsManager.addRecentProject(currentProjectFile);
-			updateRecentProjectsMenu((JMenu) getJMenuBar().getMenu(0).getMenuComponent(4));
-			recentProjectsManager.addRecentProject(currentProjectFile);
-			updateRecentProjectsMenu((JMenu) getJMenuBar().getMenu(0).getMenuComponent(4));
+			updateRecentProjectsMenu(recentProjectsMenu);
 			// Update title bar with saved file path
 			updateTitle();
 
@@ -1736,7 +1769,7 @@ public class Antigostman extends JFrame {
 			nodeConfigPanel.loadNode(null);
 
 			recentProjectsManager.addRecentProject(file);
-			updateRecentProjectsMenu((JMenu) getJMenuBar().getMenu(0).getMenuComponent(4));
+			updateRecentProjectsMenu(recentProjectsMenu);
 
 			updateOpenProjectsList();
 
@@ -1894,6 +1927,64 @@ public class Antigostman extends JFrame {
 			nodeConfigPanel.loadNode(null);
 			updateTitle();
 			treeModel.reload();
+		}
+	}
+
+	/**
+	 * Import a Postman Collection V2.x JSON file and convert it to Antigostman format
+	 */
+	private void importPostmanCollection() {
+		JFileChooser fileChooser = new JFileChooser();
+		fileChooser.setDialogTitle("Import Postman Collection");
+		
+		// Add file filter for JSON files
+		javax.swing.filechooser.FileNameExtensionFilter filter = 
+			new javax.swing.filechooser.FileNameExtensionFilter("Postman Collection (*.json)", "json");
+		fileChooser.setFileFilter(filter);
+		
+		if (fileChooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
+			File file = fileChooser.getSelectedFile();
+			
+			try {
+				// Parse the Postman collection JSON file
+				PostmanCollectionV2 postmanCollection = objectMapper.readValue(file, PostmanCollectionV2.class);
+				
+				// Convert to Antigostman format
+				PostmanImportService importService = new PostmanImportService();
+				PostmanCollection antigostmanCollection = importService.convertToAntigostman(postmanCollection);
+				
+				// Load it into the application
+				rootCollection = antigostmanCollection;
+				treeModel.setRoot(rootCollection);
+				currentProjectFile = null; // Not saved yet
+				currentNode = null;
+				nodeConfigPanel.loadNode(null);
+				
+				// Expand all nodes to show the imported structure
+				expandAllNodes(projectTree, new TreePath(rootCollection.getPath()));
+				
+				// Scroll to collection root
+				TreePath path = new TreePath(rootCollection.getPath());
+				projectTree.scrollPathToVisible(path);
+				
+				updateTitle();
+				treeModel.reload();
+				
+				// Show success message
+				JOptionPane.showMessageDialog(this, 
+					"Successfully imported Postman collection: " + antigostmanCollection.getName() + 
+					"\n\nPlease save the project to persist the changes.",
+					"Import Successful", 
+					JOptionPane.INFORMATION_MESSAGE);
+				
+			} catch (Exception e) {
+				e.printStackTrace();
+				JOptionPane.showMessageDialog(this, 
+					"Error importing Postman collection:\n" + e.getMessage() + 
+					"\n\nMake sure the file is a valid Postman Collection v2.x JSON file.",
+					"Import Error", 
+					JOptionPane.ERROR_MESSAGE);
+			}
 		}
 	}
 
