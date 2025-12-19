@@ -68,6 +68,7 @@ import com.antigostman.model.PostmanFolder;
 import com.antigostman.model.PostmanNode;
 import com.antigostman.model.PostmanRequest;
 import com.antigostman.model.postman.PostmanCollectionV2;
+import com.antigostman.service.DownloadSaver;
 import com.antigostman.service.PostmanImportService;
 import com.antigostman.service.ProjectService;
 import com.antigostman.service.RecentProjectsManager;
@@ -442,9 +443,8 @@ public class Antigostman extends JFrame {
 			}
 		});
 		// Bind Ctrl+Enter to send request
-		urlField.getInputMap().put(
-				javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_ENTER, java.awt.event.InputEvent.CTRL_DOWN_MASK),
-				"sendRequest");
+		urlField.getInputMap().put(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_ENTER,
+				java.awt.event.InputEvent.CTRL_DOWN_MASK), "sendRequest");
 		urlField.getActionMap().put("sendRequest", new javax.swing.AbstractAction() {
 			@Override
 			public void actionPerformed(java.awt.event.ActionEvent e) {
@@ -541,7 +541,7 @@ public class Antigostman extends JFrame {
 			}
 		});
 		line2.add(dlContentCheckbox);
-		
+
 		// Force line2 to take up only its preferred height
 		line2.setMaximumSize(new Dimension(Integer.MAX_VALUE, line2.getPreferredSize().height));
 
@@ -637,8 +637,8 @@ public class Antigostman extends JFrame {
 			if (tempFile.exists()) {
 				String osName = System.getProperty("os.name").toLowerCase();
 				String subject = "Rapport de test - " + projectName + " - " + req.getName();
-				String body = "Bonjour,\n\nJe vous prie de trouver ci-joint le rapport de test.\n\nProjet : " + projectName
-						+ "\nTest : " + req.getName() + "\n\nCordialement.";
+				String body = "Bonjour,\n\nJe vous prie de trouver ci-joint le rapport de test.\n\nProjet : "
+						+ projectName + "\nTest : " + req.getName() + "\n\nCordialement.";
 
 				// Get email recipients from settings
 				String emailTo = "";
@@ -654,8 +654,9 @@ public class Antigostman extends JFrame {
 				if (osName.contains("win")) {
 					try {
 						String powershellScript = String.format(
-								"$outlook = New-Object -ComObject Outlook.Application;" + "$mail = $outlook.CreateItem(0);"
-										+ "$mail.Subject = '%s';" + "$mail.Body = '%s';" + "$mail.To = '%s';" + "$mail.CC = '%s';"
+								"$outlook = New-Object -ComObject Outlook.Application;"
+										+ "$mail = $outlook.CreateItem(0);" + "$mail.Subject = '%s';"
+										+ "$mail.Body = '%s';" + "$mail.To = '%s';" + "$mail.CC = '%s';"
 										+ "$mail.Attachments.Add('%s');" + "$mail.Display()",
 								subject.replace("'", "''"), body.replace("'", "''"), emailTo.replace("'", "''"),
 								emailCc.replace("'", "''"), tempFile.getAbsolutePath().replace("\\", "\\\\"));
@@ -695,8 +696,8 @@ public class Antigostman extends JFrame {
 					java.awt.Desktop desktop = java.awt.Desktop.getDesktop();
 
 					// Create mailto URI
-					String mailto = String.format("mailto:?subject=%s&body=%s", java.net.URLEncoder.encode(subject, "UTF-8"),
-							java.net.URLEncoder.encode(body, "UTF-8"));
+					String mailto = String.format("mailto:?subject=%s&body=%s",
+							java.net.URLEncoder.encode(subject, "UTF-8"), java.net.URLEncoder.encode(body, "UTF-8"));
 
 					desktop.browse(new java.net.URI(mailto));
 
@@ -1077,13 +1078,14 @@ public class Antigostman extends JFrame {
 
 		env.putAll(globalEnv);
 
-		Map<String, Object> map = new TreeMap<>(env);
+		Map<String, Object> map = new TreeMap<>();
+		map.putAll(rootCollection.getGlobalVariables());
+		map.putAll(env);
 
 		map.put("utils", new Utils());
 		map.put("request", req);
 		map.put("console", new ConsoleLogger());
 		map.put("vars", rootCollection.getGlobalVariables());
-		map.putAll(rootCollection.getGlobalVariables());
 		return map;
 	}
 
@@ -1161,9 +1163,10 @@ public class Antigostman extends JFrame {
 			HttpRequest.BodyPublisher multipartPublisher = null;
 			String multipartContentType = null;
 
-			// Treat body as params (Form Encoded) if explicitly selected OR if it's a GET request with content
+			// Treat body as params (Form Encoded) if explicitly selected OR if it's a GET
+			// request with content
 			if ("FORM ENCODED".equalsIgnoreCase(bodyType) || (isGet && StringUtils.isNotBlank(bodyToSend))) {
-				
+
 				// Resolve variables BEFORE encoding to ensure substitution works
 				try {
 					bodyToSend = parse(bodyToSend, variables);
@@ -1184,9 +1187,9 @@ public class Antigostman extends JFrame {
 						encoded.append("=").append(URLEncoder.encode(entry.getValue(), StandardCharsets.UTF_8));
 					}
 				}
-				
+
 				String encodedBody = encoded.toString();
-				
+
 				if (isGet) {
 					queryParams = encodedBody;
 					// Update bodyToSend to reflect the parsed params (for logging/display purposes)
@@ -1222,8 +1225,8 @@ public class Antigostman extends JFrame {
 
 						if (file.exists() && file.isFile()) {
 							writer.append("--").append(boundary).append("\r\n");
-							writer.append("Content-Disposition: form-data; name=\"").append(key).append("\"; filename=\"")
-									.append(file.getName()).append("\"\r\n");
+							writer.append("Content-Disposition: form-data; name=\"").append(key)
+									.append("\"; filename=\"").append(file.getName()).append("\"\r\n");
 							writer.append("Content-Type: application/octet-stream\r\n");
 							writer.append("\r\n");
 							writer.flush();
@@ -1290,7 +1293,7 @@ public class Antigostman extends JFrame {
 				protected HttpResponse<String> doInBackground() throws Exception {
 
 					String url = parse(req.getUrl(), variables);
-					
+
 					// Append query params for GET requests
 					if (finalQueryParams != null && !finalQueryParams.isEmpty()) {
 						String separator = url.contains("?") ? "&" : "?";
@@ -1307,84 +1310,7 @@ public class Antigostman extends JFrame {
 
 						// Check if successful before processing file
 						if (binaryResp.body() != null && binaryResp.body().length > 0) {
-							try {
-								// Detect type
-								// Detect type
-								org.apache.tika.Tika tika = new org.apache.tika.Tika();
-								String mimeType = tika.detect(binaryResp.body());
-								// Default to empty extension if not reliably detected
-								String ext = ""; 
-
-								try {
-									org.apache.tika.mime.MimeTypes allTypes = org.apache.tika.mime.MimeTypes.getDefaultMimeTypes();
-									org.apache.tika.mime.MimeType type = allTypes.forName(mimeType);
-									String detectedExt = type.getExtension();
-									if (detectedExt != null && !detectedExt.isEmpty() && !detectedExt.equals(".bin")) {
-										ext = detectedExt;
-									}
-								} catch (Exception ex) {
-									// Fallback extension detection
-									if (mimeType.contains("pdf")) {
-										ext = ".pdf";
-									} else if (mimeType.contains("json")) {
-										ext = ".json";
-									} else if (mimeType.contains("xml")) {
-										ext = ".xml";
-									} else if (mimeType.contains("html")) {
-										ext = ".html";
-									} else if (mimeType.contains("text")) {
-										ext = ".txt";
-									} else if (mimeType.contains("image/png")) {
-										ext = ".png";
-									} else if (mimeType.contains("image/jpeg")) {
-										ext = ".jpg";
-									}
-								}
-                                    
-                                // Generate filename: DL-yyyyMMddHHmmss
-								String timestamp = java.time.LocalDateTime.now()
-										.format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
-								String filename = "DL-" + timestamp + ext;
-								File tempDir = new File(System.getProperty("java.io.tmpdir"));
-								File tempFile = new File(tempDir, filename);
-								
-								java.nio.file.Files.write(tempFile.toPath(), binaryResp.body());
-								
-								System.out.println("Saved download to: " + tempFile.getAbsolutePath());
-
-								// Open file
-								if (java.awt.Desktop.isDesktopSupported()) {
-									final String finalExt = ext;
-									SwingUtilities.invokeLater(() -> {
-										try {
-											if (finalExt.isEmpty()) {
-												// Try to force "Open With" dialog
-												String os = System.getProperty("os.name").toLowerCase();
-												if (os.contains("linux")) {
-													// xdg-open usually asks if unknown, or we can try to find a mime open
-													new ProcessBuilder("xdg-open", tempFile.getAbsolutePath()).start();
-												} else if (os.contains("win")) {
-													// rundll32 shell32.dll,OpenAs_RunDLL <file>
-													new ProcessBuilder("rundll32", "shell32.dll,OpenAs_RunDLL", tempFile.getAbsolutePath()).start();
-												} else if (os.contains("mac")) {
-													// open -a TextEdit ? or just open which might fail
-													new ProcessBuilder("open", tempFile.getAbsolutePath()).start();
-												} else {
-													java.awt.Desktop.getDesktop().open(tempFile);
-												}
-											} else {
-												java.awt.Desktop.getDesktop().open(tempFile);
-											}
-										} catch (Exception ex) {
-											ex.printStackTrace();
-											JOptionPane.showMessageDialog(Antigostman.this, "Failed to open file: " + ex.getMessage());
-										}
-									});
-								}
-							} catch (Exception ex) {
-								ex.printStackTrace();
-								System.err.println("Failed to save/open download: " + ex.getMessage());
-							}
+							DownloadSaver.saveAndOpen(binaryResp.body());
 						}
 
 						// Convert back to String based response for UI compatibility (pseudo-response)
@@ -1513,7 +1439,8 @@ public class Antigostman extends JFrame {
 							// Response Headers
 							StringBuilder respHeadersSb = new StringBuilder();
 							respHeadersSb.append("Status: ").append(response.statusCode()).append("\n\n");
-							response.headers().map().forEach((k, v) -> respHeadersSb.append(k).append(": ").append(v).append("\n"));
+							response.headers().map()
+									.forEach((k, v) -> respHeadersSb.append(k).append(": ").append(v).append("\n"));
 							nodeConfigPanel.setResponseHeaders(respHeadersSb.toString());
 
 							// Response Body (with JSON formatting if applicable)
@@ -1931,59 +1858,58 @@ public class Antigostman extends JFrame {
 	}
 
 	/**
-	 * Import a Postman Collection V2.x JSON file and convert it to Antigostman format
+	 * Import a Postman Collection V2.x JSON file and convert it to Antigostman
+	 * format
 	 */
 	private void importPostmanCollection() {
 		JFileChooser fileChooser = new JFileChooser();
 		fileChooser.setDialogTitle("Import Postman Collection");
-		
+
 		// Add file filter for JSON files
-		javax.swing.filechooser.FileNameExtensionFilter filter = 
-			new javax.swing.filechooser.FileNameExtensionFilter("Postman Collection (*.json)", "json");
+		javax.swing.filechooser.FileNameExtensionFilter filter = new javax.swing.filechooser.FileNameExtensionFilter(
+				"Postman Collection (*.json)", "json");
 		fileChooser.setFileFilter(filter);
-		
+
 		if (fileChooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
 			File file = fileChooser.getSelectedFile();
-			
+
 			try {
 				// Parse the Postman collection JSON file
 				PostmanCollectionV2 postmanCollection = objectMapper.readValue(file, PostmanCollectionV2.class);
-				
+
 				// Convert to Antigostman format
 				PostmanImportService importService = new PostmanImportService();
 				PostmanCollection antigostmanCollection = importService.convertToAntigostman(postmanCollection);
-				
+
 				// Load it into the application
 				rootCollection = antigostmanCollection;
 				treeModel.setRoot(rootCollection);
 				currentProjectFile = null; // Not saved yet
 				currentNode = null;
 				nodeConfigPanel.loadNode(null);
-				
+
 				// Expand all nodes to show the imported structure
 				expandAllNodes(projectTree, new TreePath(rootCollection.getPath()));
-				
+
 				// Scroll to collection root
 				TreePath path = new TreePath(rootCollection.getPath());
 				projectTree.scrollPathToVisible(path);
-				
+
 				updateTitle();
 				treeModel.reload();
-				
+
 				// Show success message
-				JOptionPane.showMessageDialog(this, 
-					"Successfully imported Postman collection: " + antigostmanCollection.getName() + 
-					"\n\nPlease save the project to persist the changes.",
-					"Import Successful", 
-					JOptionPane.INFORMATION_MESSAGE);
-				
+				JOptionPane.showMessageDialog(this,
+						"Successfully imported Postman collection: " + antigostmanCollection.getName()
+								+ "\n\nPlease save the project to persist the changes.",
+						"Import Successful", JOptionPane.INFORMATION_MESSAGE);
+
 			} catch (Exception e) {
 				e.printStackTrace();
-				JOptionPane.showMessageDialog(this, 
-					"Error importing Postman collection:\n" + e.getMessage() + 
-					"\n\nMake sure the file is a valid Postman Collection v2.x JSON file.",
-					"Import Error", 
-					JOptionPane.ERROR_MESSAGE);
+				JOptionPane.showMessageDialog(this,
+						"Error importing Postman collection:\n" + e.getMessage()
+								+ "\n\nMake sure the file is a valid Postman Collection v2.x JSON file.",
+						"Import Error", JOptionPane.ERROR_MESSAGE);
 			}
 		}
 	}
@@ -2381,17 +2307,15 @@ public class Antigostman extends JFrame {
 			if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
 				Desktop.getDesktop().browse(new URI(githubUrl));
 			} else {
-				JOptionPane.showMessageDialog(this, 
-					"GitHub: " + githubUrl + "\n\nPlease open this URL in your browser.",
-					"About Antigostman",
-					JOptionPane.INFORMATION_MESSAGE);
+				JOptionPane.showMessageDialog(this,
+						"GitHub: " + githubUrl + "\n\nPlease open this URL in your browser.", "About Antigostman",
+						JOptionPane.INFORMATION_MESSAGE);
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
-			JOptionPane.showMessageDialog(this, 
-				"Failed to open browser: " + e.getMessage() + "\n\nVisit: https://github.com/melkarama/antigostman",
-				"About Antigostman",
-				JOptionPane.ERROR_MESSAGE);
+			JOptionPane.showMessageDialog(this,
+					"Failed to open browser: " + e.getMessage() + "\n\nVisit: https://github.com/melkarama/antigostman",
+					"About Antigostman", JOptionPane.ERROR_MESSAGE);
 		}
 	}
 
