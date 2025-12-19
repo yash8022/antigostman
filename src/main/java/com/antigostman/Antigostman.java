@@ -20,9 +20,11 @@ import java.security.KeyManagementException;
 import java.security.NoSuchAlgorithmException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
@@ -68,6 +70,7 @@ import com.antigostman.model.PostmanFolder;
 import com.antigostman.model.PostmanNode;
 import com.antigostman.model.PostmanRequest;
 import com.antigostman.model.postman.PostmanCollectionV2;
+import com.antigostman.service.DownloadSaver;
 import com.antigostman.service.PostmanImportService;
 import com.antigostman.service.ProjectService;
 import com.antigostman.service.RecentProjectsManager;
@@ -279,9 +282,14 @@ public class Antigostman extends JFrame {
 			@Override
 			public void mousePressed(MouseEvent e) {
 				if (SwingUtilities.isRightMouseButton(e)) {
-					int row = projectTree.getClosestRowForLocation(e.getX(), e.getY());
-					projectTree.setSelectionRow(row);
-					showContextMenu(e.getX(), e.getY());
+					TreePath path = projectTree.getPathForLocation(e.getX(), e.getY());
+					if (path != null) {
+						int row = projectTree.getRowForPath(path);
+						if (!projectTree.isRowSelected(row)) {
+							projectTree.setSelectionRow(row);
+						}
+						showContextMenu(e.getX(), e.getY());
+					}
 				}
 			}
 		});
@@ -293,12 +301,9 @@ public class Antigostman extends JFrame {
 				if (e.getKeyCode() == java.awt.event.KeyEvent.VK_F2) {
 					renameSelectedNode();
 				} else if (e.getKeyCode() == java.awt.event.KeyEvent.VK_F3) {
-					PostmanNode node = (PostmanNode) projectTree.getLastSelectedPathComponent();
-					if (node != null) {
-						cloneNode(node);
-					}
+					cloneSelectedNodes();
 				} else if (e.getKeyCode() == java.awt.event.KeyEvent.VK_DELETE) {
-					deleteSelectedNode();
+					deleteSelectedNodes();
 				}
 			}
 		});
@@ -541,7 +546,7 @@ public class Antigostman extends JFrame {
 			}
 		});
 		line2.add(dlContentCheckbox);
-		
+
 		// Force line2 to take up only its preferred height
 		line2.setMaximumSize(new Dimension(Integer.MAX_VALUE, line2.getPreferredSize().height));
 
@@ -820,37 +825,41 @@ public class Antigostman extends JFrame {
 	}
 
 	private void showContextMenu(int x, int y) {
-		PostmanNode node = (PostmanNode) projectTree.getLastSelectedPathComponent();
-		if (node == null) {
+		TreePath[] paths = projectTree.getSelectionPaths();
+		if (paths == null || paths.length == 0) {
 			return;
 		}
 
+		PostmanNode lastNode = (PostmanNode) paths[paths.length - 1].getLastPathComponent();
 		JPopupMenu menu = new JPopupMenu();
 
-		if (node instanceof PostmanCollection || node instanceof PostmanFolder) {
+		// Add sibling options only if exactly one node is selected and it's a
+		// folder/collection
+		if (paths.length == 1 && (lastNode instanceof PostmanCollection || lastNode instanceof PostmanFolder)) {
 			JMenuItem addFolder = new JMenuItem("Add Folder");
-			addFolder.addActionListener(e -> promptAndAddChild(node, "Folder"));
+			addFolder.addActionListener(e -> promptAndAddChild(lastNode, "Folder"));
 			menu.add(addFolder);
 
 			JMenuItem addRequest = new JMenuItem("Add Request");
-			addRequest.addActionListener(e -> promptAndAddChild(node, "Request"));
+			addRequest.addActionListener(e -> promptAndAddChild(lastNode, "Request"));
 			menu.add(addRequest);
+			menu.addSeparator();
 		}
 
-		JMenuItem rename = new JMenuItem("Rename");
-		rename.addActionListener(e -> renameSelectedNode());
-		menu.add(rename);
+		if (paths.length == 1) {
+			JMenuItem rename = new JMenuItem("Rename");
+			rename.addActionListener(e -> renameSelectedNode());
+			menu.add(rename);
+		}
 
-		JMenuItem delete = new JMenuItem("Delete");
-		delete.addActionListener(e -> deleteSelectedNode());
+		String deleteLabel = paths.length > 1 ? "Delete Selected (" + paths.length + ")" : "Delete";
+		JMenuItem delete = new JMenuItem(deleteLabel);
+		delete.addActionListener(e -> deleteSelectedNodes());
 		menu.add(delete);
 
-		if (node instanceof PostmanCollection) {
-			// Root collection options
-		}
-
-		JMenuItem clone = new JMenuItem("Clone");
-		clone.addActionListener(e -> cloneNode(node));
+		String cloneLabel = paths.length > 1 ? "Clone Selected (" + paths.length + ")" : "Clone";
+		JMenuItem clone = new JMenuItem(cloneLabel);
+		clone.addActionListener(e -> cloneSelectedNodes());
 		menu.add(clone);
 
 		menu.show(projectTree, x, y);
@@ -877,53 +886,130 @@ public class Antigostman extends JFrame {
 		// autoSaveProject();
 	}
 
-	private void deleteSelectedNode() {
-		PostmanNode node = (PostmanNode) projectTree.getLastSelectedPathComponent();
-		if (node == null) {
+	private void deleteSelectedNodes() {
+		TreePath[] paths = projectTree.getSelectionPaths();
+		if (paths == null || paths.length == 0) {
 			return;
+		}
+
+		String message;
+		if (paths.length == 1) {
+			PostmanNode node = (PostmanNode) paths[0].getLastPathComponent();
+			message = "Are you sure you want to delete '" + node.getName() + "'?";
+		} else {
+			message = "Are you sure you want to delete " + paths.length + " selected nodes?";
 		}
 
 		// Create custom dialog with NO button focused by default
 		Object[] options = { "Yes", "No" };
-		int response = JOptionPane.showOptionDialog(this, "Are you sure you want to delete '" + node.getName() + "'?",
-				"Confirm Delete", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE, null, options, options[1]); // Default
-		// to
-		// "No"
+		int response = JOptionPane.showOptionDialog(this, message, "Confirm Delete", JOptionPane.YES_NO_OPTION,
+				JOptionPane.QUESTION_MESSAGE, null, options, options[1]);
 
 		if (response != 0) {
 			return; // 0 = Yes, 1 = No
 		}
 
-		if (node.getParent() != null) {
-			PostmanNode parent = (PostmanNode) node.getParent();
-			int index = parent.getIndex(node);
+		// To maintain a valid selection, we'll try to find a suitable node to select
+		// after deletions
+		PostmanNode nodeToSelect = null;
 
-			// Remove from tree
-			treeModel.removeNodeFromParent(node);
+		// Group paths by their parent to handle selection logic better
+		for (TreePath path : paths) {
+			PostmanNode node = (PostmanNode) path.getLastPathComponent();
+			if (node.getParent() != null) {
+				PostmanNode parent = (PostmanNode) node.getParent();
+				int index = parent.getIndex(node);
 
-			// Select parent or sibling to keep selection valid
-			if (parent.getChildCount() > 0) {
-				int newIndex = Math.min(index, parent.getChildCount() - 1);
-				PostmanNode sibling = (PostmanNode) parent.getChildAt(newIndex);
-				projectTree.setSelectionPath(new TreePath(sibling.getPath()));
-			} else {
-				projectTree.setSelectionPath(new TreePath(parent.getPath()));
+				// If we haven't picked a node to select yet, or if the current choice is being
+				// deleted
+				if (nodeToSelect == null || isOrHasAncestorIn(nodeToSelect, paths)) {
+					if (parent.getChildCount() > 1) {
+						int newIndex = index > 0 ? index - 1 : 1;
+						if (newIndex < parent.getChildCount()) {
+							nodeToSelect = (PostmanNode) parent.getChildAt(newIndex);
+						} else {
+							nodeToSelect = parent;
+						}
+					} else {
+						nodeToSelect = parent;
+					}
+				}
+
+				// Remove from tree
+				treeModel.removeNodeFromParent(node);
+			} else if (paths.length == 1) {
+				JOptionPane.showMessageDialog(this, "Cannot delete the root project.");
 			}
+		}
 
-			// Autosave
-			// autoSaveProject();
-		} else {
-			JOptionPane.showMessageDialog(this, "Cannot delete the root project.");
+		if (nodeToSelect != null && nodeToSelect.getParent() != null) {
+			projectTree.setSelectionPath(new TreePath(nodeToSelect.getPath()));
+		} else if (rootCollection != null) {
+			projectTree.setSelectionPath(new TreePath(rootCollection.getPath()));
+		}
+	}
+
+	private boolean isOrHasAncestorIn(PostmanNode node, TreePath[] paths) {
+		for (TreePath path : paths) {
+			PostmanNode selection = (PostmanNode) path.getLastPathComponent();
+			if (isChildOf(selection, node)) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	private void cloneSelectedNodes() {
+		TreePath[] paths = projectTree.getSelectionPaths();
+		if (paths == null || paths.length == 0) {
+			return;
+		}
+
+		if (paths.length == 1) {
+			cloneNode((PostmanNode) paths[0].getLastPathComponent());
+			return;
+		}
+
+		List<PostmanNode> clones = new ArrayList<>();
+		for (TreePath path : paths) {
+			PostmanNode node = (PostmanNode) path.getLastPathComponent();
+			PostmanNode clone = cloneNodeInternal(node, node.getName() + "-CLONE");
+			if (clone != null) {
+				clones.add(clone);
+			}
+		}
+
+		if (!clones.isEmpty()) {
+			TreePath[] newPaths = new TreePath[clones.size()];
+			for (int i = 0; i < clones.size(); i++) {
+				newPaths[i] = new TreePath(clones.get(i).getPath());
+			}
+			projectTree.setSelectionPaths(newPaths);
+			projectTree.scrollPathToVisible(newPaths[newPaths.length - 1]);
 		}
 	}
 
 	private void cloneNode(PostmanNode node) {
-		try {
-			String defaultName = node.getName() + "-CLONE";
-			String newName = JOptionPane.showInputDialog(this, "Enter name for clone:", defaultName);
+		String defaultName = node.getName() + "-CLONE";
+		String newName = JOptionPane.showInputDialog(this, "Enter name for clone:", defaultName);
 
-			if (newName == null) {
-				return; // User cancelled
+		if (newName == null) {
+			return; // User cancelled
+		}
+
+		PostmanNode clone = cloneNodeInternal(node, newName);
+		if (clone != null) {
+			TreePath path = new TreePath(clone.getPath());
+			projectTree.setSelectionPath(path);
+			projectTree.scrollPathToVisible(path);
+		}
+	}
+
+	private PostmanNode cloneNodeInternal(PostmanNode node, String newName) {
+		try {
+			if (node.getParent() == null) {
+				JOptionPane.showMessageDialog(this, "Cannot clone the root node.");
+				return null;
 			}
 
 			// Convert to XML model (no parent references), then back to PostmanNode
@@ -945,20 +1031,12 @@ public class Antigostman extends JFrame {
 			regenerateIds(clone);
 
 			PostmanNode parent = (PostmanNode) node.getParent();
-			if (parent != null) {
-				addChild(parent, clone);
-				// Select the new cloned node
-				TreePath path = new TreePath(clone.getPath());
-				projectTree.setSelectionPath(path);
-				projectTree.scrollPathToVisible(path);
-				projectTree.scrollPathToVisible(path);
-			} else {
-				JOptionPane.showMessageDialog(this, "Cannot clone the root node.");
-			}
-			// autoSaveProject();
+			addChild(parent, clone);
+			return clone;
 		} catch (Exception e) {
 			e.printStackTrace();
 			JOptionPane.showMessageDialog(this, "Clone failed: " + e.getMessage());
+			return null;
 		}
 	}
 
@@ -1077,13 +1155,14 @@ public class Antigostman extends JFrame {
 
 		env.putAll(globalEnv);
 
-		Map<String, Object> map = new TreeMap<>(env);
+		Map<String, Object> map = new TreeMap<>();
+		map.putAll(rootCollection.getGlobalVariables());
+		map.putAll(env);
 
 		map.put("utils", new Utils());
 		map.put("request", req);
 		map.put("console", new ConsoleLogger());
 		map.put("vars", rootCollection.getGlobalVariables());
-		map.putAll(rootCollection.getGlobalVariables());
 		return map;
 	}
 
@@ -1161,9 +1240,10 @@ public class Antigostman extends JFrame {
 			HttpRequest.BodyPublisher multipartPublisher = null;
 			String multipartContentType = null;
 
-			// Treat body as params (Form Encoded) if explicitly selected OR if it's a GET request with content
+			// Treat body as params (Form Encoded) if explicitly selected OR if it's a GET
+			// request with content
 			if ("FORM ENCODED".equalsIgnoreCase(bodyType) || (isGet && StringUtils.isNotBlank(bodyToSend))) {
-				
+
 				// Resolve variables BEFORE encoding to ensure substitution works
 				try {
 					bodyToSend = parse(bodyToSend, variables);
@@ -1184,9 +1264,9 @@ public class Antigostman extends JFrame {
 						encoded.append("=").append(URLEncoder.encode(entry.getValue(), StandardCharsets.UTF_8));
 					}
 				}
-				
+
 				String encodedBody = encoded.toString();
-				
+
 				if (isGet) {
 					queryParams = encodedBody;
 					// Update bodyToSend to reflect the parsed params (for logging/display purposes)
@@ -1290,7 +1370,7 @@ public class Antigostman extends JFrame {
 				protected HttpResponse<String> doInBackground() throws Exception {
 
 					String url = parse(req.getUrl(), variables);
-					
+
 					// Append query params for GET requests
 					if (finalQueryParams != null && !finalQueryParams.isEmpty()) {
 						String separator = url.contains("?") ? "&" : "?";
@@ -1307,84 +1387,7 @@ public class Antigostman extends JFrame {
 
 						// Check if successful before processing file
 						if (binaryResp.body() != null && binaryResp.body().length > 0) {
-							try {
-								// Detect type
-								// Detect type
-								org.apache.tika.Tika tika = new org.apache.tika.Tika();
-								String mimeType = tika.detect(binaryResp.body());
-								// Default to empty extension if not reliably detected
-								String ext = ""; 
-
-								try {
-									org.apache.tika.mime.MimeTypes allTypes = org.apache.tika.mime.MimeTypes.getDefaultMimeTypes();
-									org.apache.tika.mime.MimeType type = allTypes.forName(mimeType);
-									String detectedExt = type.getExtension();
-									if (detectedExt != null && !detectedExt.isEmpty() && !detectedExt.equals(".bin")) {
-										ext = detectedExt;
-									}
-								} catch (Exception ex) {
-									// Fallback extension detection
-									if (mimeType.contains("pdf")) {
-										ext = ".pdf";
-									} else if (mimeType.contains("json")) {
-										ext = ".json";
-									} else if (mimeType.contains("xml")) {
-										ext = ".xml";
-									} else if (mimeType.contains("html")) {
-										ext = ".html";
-									} else if (mimeType.contains("text")) {
-										ext = ".txt";
-									} else if (mimeType.contains("image/png")) {
-										ext = ".png";
-									} else if (mimeType.contains("image/jpeg")) {
-										ext = ".jpg";
-									}
-								}
-                                    
-                                // Generate filename: DL-yyyyMMddHHmmss
-								String timestamp = java.time.LocalDateTime.now()
-										.format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
-								String filename = "DL-" + timestamp + ext;
-								File tempDir = new File(System.getProperty("java.io.tmpdir"));
-								File tempFile = new File(tempDir, filename);
-								
-								java.nio.file.Files.write(tempFile.toPath(), binaryResp.body());
-								
-								System.out.println("Saved download to: " + tempFile.getAbsolutePath());
-
-								// Open file
-								if (java.awt.Desktop.isDesktopSupported()) {
-									final String finalExt = ext;
-									SwingUtilities.invokeLater(() -> {
-										try {
-											if (finalExt.isEmpty()) {
-												// Try to force "Open With" dialog
-												String os = System.getProperty("os.name").toLowerCase();
-												if (os.contains("linux")) {
-													// xdg-open usually asks if unknown, or we can try to find a mime open
-													new ProcessBuilder("xdg-open", tempFile.getAbsolutePath()).start();
-												} else if (os.contains("win")) {
-													// rundll32 shell32.dll,OpenAs_RunDLL <file>
-													new ProcessBuilder("rundll32", "shell32.dll,OpenAs_RunDLL", tempFile.getAbsolutePath()).start();
-												} else if (os.contains("mac")) {
-													// open -a TextEdit ? or just open which might fail
-													new ProcessBuilder("open", tempFile.getAbsolutePath()).start();
-												} else {
-													java.awt.Desktop.getDesktop().open(tempFile);
-												}
-											} else {
-												java.awt.Desktop.getDesktop().open(tempFile);
-											}
-										} catch (Exception ex) {
-											ex.printStackTrace();
-											JOptionPane.showMessageDialog(Antigostman.this, "Failed to open file: " + ex.getMessage());
-										}
-									});
-								}
-							} catch (Exception ex) {
-								ex.printStackTrace();
-								System.err.println("Failed to save/open download: " + ex.getMessage());
-							}
+							DownloadSaver.saveAndOpen(binaryResp.body());
 						}
 
 						// Convert back to String based response for UI compatibility (pseudo-response)
@@ -1461,11 +1464,11 @@ public class Antigostman extends JFrame {
 					} else {
 						// Use multipart if available, otherwise regular request
 						if (finalMultipartPublisher != null) {
-							return httpClientService.sendRequest(url, req.getMethod(), finalMultipartPublisher,
-									finalHeaders, req.getTimeout(), req.getHttpVersion(), finalMultipartContentType);
+							return httpClientService.sendRequest(url, req.getMethod(), finalMultipartPublisher, finalHeaders,
+									req.getTimeout(), req.getHttpVersion(), finalMultipartContentType);
 						} else {
-							return httpClientService.sendRequest(url, req.getMethod(), body, finalHeaders,
-									req.getTimeout(), req.getHttpVersion());
+							return httpClientService.sendRequest(url, req.getMethod(), body, finalHeaders, req.getTimeout(),
+									req.getHttpVersion());
 						}
 					}
 				}
@@ -1931,59 +1934,58 @@ public class Antigostman extends JFrame {
 	}
 
 	/**
-	 * Import a Postman Collection V2.x JSON file and convert it to Antigostman format
+	 * Import a Postman Collection V2.x JSON file and convert it to Antigostman
+	 * format
 	 */
 	private void importPostmanCollection() {
 		JFileChooser fileChooser = new JFileChooser();
 		fileChooser.setDialogTitle("Import Postman Collection");
-		
+
 		// Add file filter for JSON files
-		javax.swing.filechooser.FileNameExtensionFilter filter = 
-			new javax.swing.filechooser.FileNameExtensionFilter("Postman Collection (*.json)", "json");
+		javax.swing.filechooser.FileNameExtensionFilter filter = new javax.swing.filechooser.FileNameExtensionFilter(
+				"Postman Collection (*.json)", "json");
 		fileChooser.setFileFilter(filter);
-		
+
 		if (fileChooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
 			File file = fileChooser.getSelectedFile();
-			
+
 			try {
 				// Parse the Postman collection JSON file
 				PostmanCollectionV2 postmanCollection = objectMapper.readValue(file, PostmanCollectionV2.class);
-				
+
 				// Convert to Antigostman format
 				PostmanImportService importService = new PostmanImportService();
 				PostmanCollection antigostmanCollection = importService.convertToAntigostman(postmanCollection);
-				
+
 				// Load it into the application
 				rootCollection = antigostmanCollection;
 				treeModel.setRoot(rootCollection);
 				currentProjectFile = null; // Not saved yet
 				currentNode = null;
 				nodeConfigPanel.loadNode(null);
-				
+
 				// Expand all nodes to show the imported structure
 				expandAllNodes(projectTree, new TreePath(rootCollection.getPath()));
-				
+
 				// Scroll to collection root
 				TreePath path = new TreePath(rootCollection.getPath());
 				projectTree.scrollPathToVisible(path);
-				
+
 				updateTitle();
 				treeModel.reload();
-				
+
 				// Show success message
-				JOptionPane.showMessageDialog(this, 
-					"Successfully imported Postman collection: " + antigostmanCollection.getName() + 
-					"\n\nPlease save the project to persist the changes.",
-					"Import Successful", 
-					JOptionPane.INFORMATION_MESSAGE);
-				
+				JOptionPane.showMessageDialog(this,
+						"Successfully imported Postman collection: " + antigostmanCollection.getName()
+								+ "\n\nPlease save the project to persist the changes.",
+						"Import Successful", JOptionPane.INFORMATION_MESSAGE);
+
 			} catch (Exception e) {
 				e.printStackTrace();
-				JOptionPane.showMessageDialog(this, 
-					"Error importing Postman collection:\n" + e.getMessage() + 
-					"\n\nMake sure the file is a valid Postman Collection v2.x JSON file.",
-					"Import Error", 
-					JOptionPane.ERROR_MESSAGE);
+				JOptionPane.showMessageDialog(this,
+						"Error importing Postman collection:\n" + e.getMessage()
+								+ "\n\nMake sure the file is a valid Postman Collection v2.x JSON file.",
+						"Import Error", JOptionPane.ERROR_MESSAGE);
 			}
 		}
 	}
@@ -2056,13 +2058,18 @@ public class Antigostman extends JFrame {
 		@Override
 		protected java.awt.datatransfer.Transferable createTransferable(javax.swing.JComponent c) {
 			JTree tree = (JTree) c;
-			TreePath path = tree.getSelectionPath();
-			if (path != null) {
-				PostmanNode node = (PostmanNode) path.getLastPathComponent();
-				// Prevent dragging the root workspace or collections (optional, but good for
-				// structure)
-				// Allowing dragging collections to reorder them is fine, but not into folders
-				return new java.awt.datatransfer.StringSelection(node.getId()); // Use ID as transfer data
+			TreePath[] paths = tree.getSelectionPaths();
+			if (paths != null && paths.length > 0) {
+				java.util.List<String> ids = new java.util.ArrayList<>();
+				for (TreePath path : paths) {
+					PostmanNode node = (PostmanNode) path.getLastPathComponent();
+					if (node.getParent() != null) {
+						ids.add(node.getId());
+					}
+				}
+				if (!ids.isEmpty()) {
+					return new java.awt.datatransfer.StringSelection(String.join(",", ids));
+				}
 			}
 			return null;
 		}
@@ -2093,48 +2100,62 @@ public class Antigostman extends JFrame {
 			}
 
 			try {
-				// Get dropped node ID
-				String nodeId = (String) support.getTransferable()
+				// Get dropped node IDs
+				String nodeIds = (String) support.getTransferable()
 						.getTransferData(java.awt.datatransfer.DataFlavor.stringFlavor);
-				PostmanNode draggedNode = findNodeById(rootCollection, nodeId);
-
-				if (draggedNode == null) {
-					return false;
-				}
+				String[] ids = nodeIds.split(",");
 
 				JTree.DropLocation dl = (JTree.DropLocation) support.getDropLocation();
 				TreePath destPath = dl.getPath();
 				PostmanNode targetParent = (PostmanNode) destPath.getLastPathComponent();
 
-				// Prevent dropping into itself or its children
-				if (draggedNode == targetParent || isChildOf(draggedNode, targetParent)) {
+				int insertIndex = dl.getChildIndex();
+				if (insertIndex == -1) {
+					insertIndex = targetParent.getChildCount();
+				}
+
+				java.util.List<PostmanNode> draggedNodes = new java.util.ArrayList<>();
+				for (String id : ids) {
+					PostmanNode draggedNode = findNodeById(rootCollection, id);
+					if (draggedNode != null) {
+						// Prevent dropping into itself or its children
+						if (draggedNode == targetParent || isChildOf(draggedNode, targetParent)) {
+							continue;
+						}
+						draggedNodes.add(draggedNode);
+					}
+				}
+
+				if (draggedNodes.isEmpty()) {
 					return false;
 				}
 
-				PostmanNode currentParent = (PostmanNode) draggedNode.getParent();
-				int currentIndex = currentParent.getIndex(draggedNode);
+				for (PostmanNode draggedNode : draggedNodes) {
+					PostmanNode currentParent = (PostmanNode) draggedNode.getParent();
+					int currentIndex = currentParent.getIndex(draggedNode);
 
-				// Perform move
-				treeModel.removeNodeFromParent(draggedNode);
+					// Perform move
+					treeModel.removeNodeFromParent(draggedNode);
 
-				int index = dl.getChildIndex();
-				if (index == -1) {
-					index = targetParent.getChildCount();
+					// If moving within the same parent and moving down (source index < target
+					// index),
+					// we need to decrement the target index because removing the node shifted
+					// subsequent indices.
+					if (currentParent == targetParent && currentIndex < insertIndex) {
+						insertIndex--;
+					}
+
+					treeModel.insertNodeInto(draggedNode, targetParent, insertIndex);
+					insertIndex++; // Move next one after this one
 				}
 
-				// If moving within the same parent and moving down (source index < target
-				// index),
-				// we need to decrement the target index because removing the node shifted
-				// subsequent indices.
-				if (currentParent == targetParent && currentIndex < index) {
-					index--;
-				}
-
-				treeModel.insertNodeInto(draggedNode, targetParent, index);
-
-				// Expand target and select moved node
+				// Expand target and select moved nodes
 				projectTree.expandPath(destPath);
-				projectTree.setSelectionPath(new TreePath(draggedNode.getPath()));
+				TreePath[] newPaths = new TreePath[draggedNodes.size()];
+				for (int i = 0; i < draggedNodes.size(); i++) {
+					newPaths[i] = new TreePath(draggedNodes.get(i).getPath());
+				}
+				projectTree.setSelectionPaths(newPaths);
 
 				// Autosave
 				// autoSaveProject();
@@ -2144,32 +2165,6 @@ public class Antigostman extends JFrame {
 				e.printStackTrace();
 				return false;
 			}
-		}
-
-		private PostmanNode findNodeById(PostmanNode root, String id) {
-			if (root.getId().equals(id)) {
-				return root;
-			}
-			for (int i = 0; i < root.getChildCount(); i++) {
-				PostmanNode found = findNodeById((PostmanNode) root.getChildAt(i), id);
-				if (found != null) {
-					return found;
-				}
-			}
-			return null;
-		}
-
-		private boolean isChildOf(PostmanNode potentialParent, PostmanNode node) {
-			if (node == null) {
-				return false;
-			}
-			if (node == potentialParent) {
-				return true;
-			}
-			if (node.getParent() == null) {
-				return false; // Reached root without finding potentialParent
-			}
-			return isChildOf(potentialParent, (PostmanNode) node.getParent());
 		}
 	}
 
@@ -2184,6 +2179,19 @@ public class Antigostman extends JFrame {
 			}
 		}
 		return null;
+	}
+
+	private boolean isChildOf(PostmanNode potentialParent, PostmanNode node) {
+		if (node == null) {
+			return false;
+		}
+		if (node == potentialParent) {
+			return true;
+		}
+		if (node.getParent() == null) {
+			return false; // Reached root without finding potentialParent
+		}
+		return isChildOf(potentialParent, (PostmanNode) node.getParent());
 	}
 
 	public static void main(String[] args) {
@@ -2381,17 +2389,14 @@ public class Antigostman extends JFrame {
 			if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
 				Desktop.getDesktop().browse(new URI(githubUrl));
 			} else {
-				JOptionPane.showMessageDialog(this, 
-					"GitHub: " + githubUrl + "\n\nPlease open this URL in your browser.",
-					"About Antigostman",
-					JOptionPane.INFORMATION_MESSAGE);
+				JOptionPane.showMessageDialog(this, "GitHub: " + githubUrl + "\n\nPlease open this URL in your browser.",
+						"About Antigostman", JOptionPane.INFORMATION_MESSAGE);
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
-			JOptionPane.showMessageDialog(this, 
-				"Failed to open browser: " + e.getMessage() + "\n\nVisit: https://github.com/melkarama/antigostman",
-				"About Antigostman",
-				JOptionPane.ERROR_MESSAGE);
+			JOptionPane.showMessageDialog(this,
+					"Failed to open browser: " + e.getMessage() + "\n\nVisit: https://github.com/melkarama/antigostman",
+					"About Antigostman", JOptionPane.ERROR_MESSAGE);
 		}
 	}
 
